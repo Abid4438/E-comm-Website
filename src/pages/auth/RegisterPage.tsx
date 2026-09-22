@@ -1,0 +1,159 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useToastStore } from '../../store/useToastStore';
+import { Button } from '../../components/ui/Button';
+import { SEOHead } from '../../components/ui/SEOHead';
+import { ArrowRight } from 'lucide-react';
+
+export const RegisterPage: React.FC = () => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { register: registerUser } = useAuthStore();
+  const { showToast } = useToastStore();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !firstName || !lastName) {
+      showToast({ title: 'Error', message: 'Please fill in required fields.', type: 'error' });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await registerUser({ email, firstName, lastName, phone, password });
+      showToast({
+        title: 'Account Created',
+        message: 'Welcome to the MOSS community.',
+        type: 'success',
+      });
+      navigate('/account');
+    } catch {
+      showToast({
+        title: 'Registration Error',
+        message: 'Could not create account.',
+        type: 'error',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-16 sm:py-24">
+      <SEOHead title="Create Account | MOSS" description="Register for a MOSS customer account." />
+
+      <div className="bg-[#FAF8F5] border border-sand-300 p-8 sm:p-10 shadow-sm">
+        <div className="text-center space-y-2 mb-8">
+          <span className="text-[11px] uppercase tracking-[0.25em] text-moss-800 font-semibold block">
+            Join MOSS
+          </span>
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-charcoal-900 tracking-tight">
+            Create an Account
+          </h1>
+          <p className="text-xs text-charcoal-500 font-light">
+            Enjoy simplified checkout, exclusive releases, and tailored design consultations.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                First Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Elena"
+                className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Rostova"
+                className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+              Email Address *
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="elena@example.com"
+              className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+              Phone Number (Optional)
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 (555) 234-8901"
+              className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+              Create Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+            />
+          </div>
+
+          <div className="pt-2">
+            <Button
+              type="submit"
+              variant="dark"
+              size="lg"
+              className="w-full"
+              isLoading={isLoading}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              Register Account
+            </Button>
+          </div>
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-sand-200 text-center text-xs text-charcoal-600">
+          <span>Already have an account? </span>
+          <Link to="/login" className="text-moss-900 font-semibold underline underline-offset-4">
+            Sign In Here
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};

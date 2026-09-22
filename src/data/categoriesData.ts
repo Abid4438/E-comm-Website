@@ -1,0 +1,48 @@
+import { Category } from '../types/category';
+
+export const INITIAL_CATEGORIES: Category[] = [
+  {
+    id: 'cat-home',
+    name: 'Home',
+    slug: 'home',
+    tagline: 'Sculptural objects & tactile textiles',
+    description: 'Thoughtfully crafted ceramics, stonewashed linens, and architectural objects designed to ground your living spaces in calm serenity.',
+    image: 'https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=1000&q=80',
+    heroImage: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1800&q=85',
+    itemCount: 6,
+    featured: true,
+  },
+  {
+    id: 'cat-apparel',
+    name: 'Apparel',
+    slug: 'apparel',
+    tagline: 'Timeless silhouettes in natural fibers',
+    description: 'Breathable European linen, organic heavy cotton, and relaxed tailoring engineered for everyday ease and understated elegance.',
+    image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=1000&q=80',
+    heroImage: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1800&q=85',
+    itemCount: 5,
+    featured: true,
+  },
+  {
+    id: 'cat-accessories',
+    name: 'Accessories',
+    slug: 'accessories',
+    tagline: 'Enduring leather goods & minimalist accents',
+    description: 'Full-grain vegetable-tanned leather, brushed metals, and Japanese canvas goods created to patina beautifully over a lifetime.',
+    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=1000&q=80',
+    heroImage: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1800&q=85',
+    itemCount: 5,
+    featured: true,
+  },
+  {
+    id: 'cat-essentials',
+    name: 'Everyday Essentials',
+    slug: 'essentials',
+    tagline: 'Rituals for mindful daily living',
+    description: 'Apothecary formulations, botanical incense, hand-carved grooming wares, and sensory items for slow, intentional mornings.',
+    image: 'https://images.unsplash.com/photo-1608248597359-0010c2c1a84f?auto=format&fit=crop&w=1000&q=80',
+    heroImage: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1800&q=85',
+    itemCount: 5,
+    featured: true,
+  },
+];
