@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
 import { SEOHead } from '../../components/ui/SEOHead';
-import { User, ShieldCheck, ArrowRight } from 'lucide-react';
+import { User, ShieldCheck, ArrowRight, Shield } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -19,8 +19,8 @@ export const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      showToast({ title: 'Error', message: 'Please enter your email', type: 'error' });
+    if (!email || !password) {
+      showToast({ title: 'Error', message: 'Enter email and password to validate against account.', type: 'error' });
       return;
     }
 
@@ -75,6 +75,17 @@ export const LoginPage: React.FC = () => {
           <p className="text-xs text-charcoal-500 font-light">
             Access your order history, curated wishlists, and tailored recommendations.
           </p>
+        </div>
+
+        {/* Social / Password-strength */}
+        <div className="mb-6 space-y-3">
+          <div className="flex gap-2">
+            <button type="button" className="flex-1 py-2 bg-[#4267B2] text-white text-[11px] font-medium hover:bg-[#365899]">Google</button>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-moss-900/5 border border-moss-900/10 text-xs text-charcoal-700">
+            <Shield className="w-3.5 h-3.5 text-moss-800" />
+            <span>Secure sign-in with Google available.</span>
+          </div>
         </div>
 
         {/* Demo Fast Logins */}

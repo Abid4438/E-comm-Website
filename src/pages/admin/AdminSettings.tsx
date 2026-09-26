@@ -146,6 +146,18 @@ export const AdminSettings: React.FC = () => {
           </div>
         </div>
 
+        <div className="pt-6 border-t border-sand-200">
+          <Button
+            type="button"
+            variant="dark"
+            size="lg"
+            onClick={() => window.open('http://localhost:4000/export/db-download', '_blank')}
+            leftIcon={<Database className="w-4 h-4" />}
+          >
+            Download DB
+          </Button>
+        </div>
+
         <div className="flex justify-end">
           <Button
             type="submit"

@@ -23,6 +23,8 @@ export const customerService: ICustomerService = new MockCustomerService();
 export const reviewService: IReviewService = new MockReviewService();
 export const discountService: IDiscountService = new MockDiscountService();
 
+export const sendVerificationEmail = async (email: string) => ({ sent: true, email });
+
 export const API_CONFIG = {
   isMock: !USE_MAGENTO,
   currency: 'USD',

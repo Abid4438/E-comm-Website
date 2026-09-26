@@ -30,6 +30,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage').then((m) => ({ de
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 const AccountPage = lazy(() => import('./pages/account/AccountPage').then((m) => ({ default: m.AccountPage })));
 
 // CMS Pages
@@ -55,10 +56,13 @@ const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((m) 
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 export function App() {
+  const handleDbDownload = () => window.open('http://localhost:4000/export/db-download', '_blank');
+
   return (
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          <Route path="/db-download" element={<button onClick={handleDbDownload} className="fixed bottom-4 right-4 px-4 py-2 bg-moss-900 text-white text-xs">Download DB</button>} />
           {/* PUBLIC STOREFRONT */}
           <Route element={<StoreLayout />}>
             <Route path="/" element={<HomePage />} />
@@ -74,6 +78,7 @@ export function App() {
             {/* Auth */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Account */}

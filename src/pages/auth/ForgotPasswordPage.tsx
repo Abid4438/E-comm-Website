@@ -11,6 +11,9 @@ export const ForgotPasswordPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToastStore();
 
+  const [tokenSent, setTokenSent] = useState(false);
+  const [tokenExpiry, setTokenExpiry] = useState('30 min');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
@@ -18,10 +21,11 @@ export const ForgotPasswordPage: React.FC = () => {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      setIsSent(true);
-      showToast({
+    setIsSent(true);
+    setTokenSent(true);
+    showToast({
         title: 'Reset Link Dispatched',
-        message: `A password reset link has been sent to ${email}.`,
+        message: `A secure password reset link (expires in ${tokenExpiry}) has been sent to ${email}.`,
         type: 'success',
       });
     }, 800);
@@ -49,7 +53,7 @@ export const ForgotPasswordPage: React.FC = () => {
               Check Your Inbox
             </h1>
             <p className="text-xs text-charcoal-600 font-light leading-relaxed">
-              We have sent password reset instructions to <strong>{email}</strong>. Please check your spam folder if you do not see it within a few minutes.
+              We have sent a secure reset link (expires in {tokenExpiry}) to <strong>{email}</strong>. Please check your spam folder if you do not see it within a few minutes.
             </p>
             <div className="pt-4">
               <Link to="/login">

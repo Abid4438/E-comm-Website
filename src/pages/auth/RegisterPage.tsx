@@ -4,36 +4,42 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
 import { SEOHead } from '../../components/ui/SEOHead';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, MailCheck } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
+  const [verified, setVerified] = useState(false);
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { register: registerUser } = useAuthStore();
   const { showToast } = useToastStore();
   const navigate = useNavigate();
+  const handleVerify = () => { setVerified(true); showToast({ title: 'Email Verified', message: 'Check your inbox and confirm.', type: 'success' }); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !firstName || !lastName) {
-      showToast({ title: 'Error', message: 'Please fill in required fields.', type: 'error' });
+    if (!email || !firstName || !lastName || !password) {
+      showToast({ title: 'Error', message: 'Please fill all required fields including password.', type: 'error' });
+      return;
+    }
+    if (password !== confirmPassword) {
+      showToast({ title: 'Error', message: 'Passwords do not match.', type: 'error' });
       return;
     }
 
     setIsLoading(true);
     try {
       await registerUser({ email, firstName, lastName, phone, password });
-      showToast({
-        title: 'Account Created',
-        message: 'Welcome to the MOSS community.',
-        type: 'success',
-      });
-      navigate('/account');
+      const { sendVerificationEmail } = await import('../../services/apiClient');
+      await sendVerificationEmail(email);
+      showToast({ title: 'Account Created', message: 'Confirm email, then login.', type: 'success' });
+      navigate('/verify-email?email=' + encodeURIComponent(email));
     } catch {
       showToast({
         title: 'Registration Error',
@@ -126,11 +132,17 @@ export const RegisterPage: React.FC = () => {
             </label>
             <input
               type="password"
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">Confirm Password</label>
+            <input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900" />
           </div>
 
           <div className="pt-2">

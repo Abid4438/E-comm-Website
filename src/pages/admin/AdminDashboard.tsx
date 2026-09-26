@@ -22,6 +22,8 @@ import {
   TrendingUp,
   Tag,
   Lock,
+  BellRing,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -192,6 +194,17 @@ export const AdminDashboard: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Notifications / Audit / Analytics references */}
+        <div className="lg:col-span-4 p-6 sm:p-8 bg-[#FAF8F5] border border-sand-300 shadow-sm space-y-4">
+          <h3 className="font-serif text-xl font-normal text-charcoal-900 flex items-center gap-2"><BellRing className="w-4 h-4 text-gold-500" /> Notifications</h3>
+          <ul className="text-xs space-y-2 text-charcoal-700">
+            <li>• Low-stock alert: 3 SKUs under threshold.</li>
+            <li>• Order #2481 flagged for refund review.</li>
+          </ul>
+          <h3 className="font-serif text-xl font-normal text-charcoal-900 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-moss-800" /> Audit Log</h3>
+          <p className="text-[11px] text-charcoal-500">Audit trail and multi-vendor support not fully implemented. Refer to Shopify/Magento-style admin flows for full analytics + audit patterns.</p>
         </div>
 
         {/* Category Share Breakdown */}
