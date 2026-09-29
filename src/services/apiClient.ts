@@ -5,28 +5,24 @@ import { ICustomerService } from './interfaces/ICustomerService';
 import { IReviewService } from './interfaces/IReviewService';
 import { IDiscountService } from './interfaces/IDiscountService';
 
-import { MockProductService } from './mock/MockProductService';
-import { MockCategoryService } from './mock/MockCategoryService';
-import { MockOrderService } from './mock/MockOrderService';
-import { MockCustomerService } from './mock/MockCustomerService';
-import { MockReviewService } from './mock/MockReviewService';
-import { MockDiscountService } from './mock/MockDiscountService';
+import { ApiProductService } from './api/ApiProductService';
+import { ApiCategoryService } from './api/ApiCategoryService';
+import { ApiOrderService } from './api/ApiOrderService';
+import { ApiCustomerService } from './api/ApiCustomerService';
+import { ApiReviewService } from './api/ApiReviewService';
+import { ApiDiscountService } from './api/ApiDiscountService';
 
-// Service Factory / Registry
-// Allows simple swap to Magento or other e-commerce backend (Shopify / BigCommerce / Medusa)
-const USE_MAGENTO = import.meta.env.VITE_USE_MAGENTO === 'true';
-
-export const productService: IProductService = new MockProductService();
-export const categoryService: ICategoryService = new MockCategoryService();
-export const orderService: IOrderService = new MockOrderService();
-export const customerService: ICustomerService = new MockCustomerService();
-export const reviewService: IReviewService = new MockReviewService();
-export const discountService: IDiscountService = new MockDiscountService();
+export const productService: IProductService = new ApiProductService();
+export const categoryService: ICategoryService = new ApiCategoryService();
+export const orderService: IOrderService = new ApiOrderService();
+export const customerService: ICustomerService = new ApiCustomerService();
+export const reviewService: IReviewService = new ApiReviewService();
+export const discountService: IDiscountService = new ApiDiscountService();
 
 export const sendVerificationEmail = async (email: string) => ({ sent: true, email });
 
 export const API_CONFIG = {
-  isMock: !USE_MAGENTO,
+  isMock: false,
   currency: 'USD',
   currencySymbol: '$',
   taxRate: 0.08, // 8% estimated tax

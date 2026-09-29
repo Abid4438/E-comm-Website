@@ -4,7 +4,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
 import { SEOHead } from '../../components/ui/SEOHead';
-import { ArrowRight, MailCheck } from 'lucide-react';
+import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
+import { ArrowRight, Shield } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
   const [verified, setVerified] = useState(false);
@@ -66,6 +67,23 @@ export const RegisterPage: React.FC = () => {
           <p className="text-xs text-charcoal-500 font-light">
             Enjoy simplified checkout, exclusive releases, and tailored design consultations.
           </p>
+        </div>
+
+        {/* Google Sign-Up */}
+        <div className="mb-6 space-y-3">
+          <div className="flex gap-2">
+            <GoogleSignInButton label="Sign up with Google" />
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-moss-900/5 border border-moss-900/10 text-xs text-charcoal-700">
+            <Shield className="w-3.5 h-3.5 text-moss-800" />
+            <span>Fast, one-click registration with your Google account.</span>
+          </div>
+          <div className="relative flex items-center justify-center pt-2">
+            <div className="border-t border-sand-300 w-full"></div>
+            <span className="bg-[#FAF8F5] px-3 text-[11px] uppercase tracking-wider text-charcoal-400 font-medium absolute">
+              or register with email
+            </span>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

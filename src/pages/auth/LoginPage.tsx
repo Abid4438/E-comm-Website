@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
 import { SEOHead } from '../../components/ui/SEOHead';
+import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
 import { User, ShieldCheck, ArrowRight, Shield } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -77,10 +78,10 @@ export const LoginPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Social / Password-strength */}
+        {/* Google Sign-In */}
         <div className="mb-6 space-y-3">
           <div className="flex gap-2">
-            <button type="button" className="flex-1 py-2 bg-[#4267B2] text-white text-[11px] font-medium hover:bg-[#365899]">Google</button>
+            <GoogleSignInButton label="Sign in with Google" />
           </div>
           <div className="flex items-center gap-2 p-2 bg-moss-900/5 border border-moss-900/10 text-xs text-charcoal-700">
             <Shield className="w-3.5 h-3.5 text-moss-800" />
