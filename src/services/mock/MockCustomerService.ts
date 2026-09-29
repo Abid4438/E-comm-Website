@@ -74,6 +74,39 @@ export class MockCustomerService implements ICustomerService {
     return { customer, token };
   }
 
+  async googleLogin(data: { email: string; firstName: string; lastName: string; avatar?: string; googleId?: string }): Promise<{ customer: Customer; token: string }> {
+    const customers = this.getStoredCustomers();
+    let customer = customers.find(c => c.email.toLowerCase() === data.email.toLowerCase());
+
+    if (!customer) {
+      customer = {
+        id: `cust-${Date.now()}`,
+        email: data.email,
+        firstName: data.firstName || data.email.split('@')[0],
+        lastName: data.lastName || 'Member',
+        phone: '',
+        role: data.email.includes('admin') ? 'admin' : 'customer',
+        avatar: data.avatar,
+        registeredAt: new Date().toISOString(),
+        status: 'Active',
+        totalOrders: 0,
+        totalSpent: 0,
+        addresses: [],
+      };
+      customers.push(customer);
+      this.saveCustomers(customers);
+    } else {
+      if (data.avatar) customer.avatar = data.avatar;
+      this.saveCustomers(customers);
+    }
+
+    const token = `moss_jwt_${btoa(customer.id)}_${Date.now()}`;
+    localStorage.setItem(AUTH_KEY, JSON.stringify(customer));
+    localStorage.setItem('moss_auth_token', token);
+
+    return { customer, token };
+  }
+
   async register(data: { email: string; firstName: string; lastName: string; phone?: string; password?: string }): Promise<{ customer: Customer; token: string }> {
     const customers = this.getStoredCustomers();
     const existing = customers.find(c => c.email.toLowerCase() === data.email.toLowerCase());

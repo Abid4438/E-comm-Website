@@ -55,6 +55,63 @@ async function formatCustomer(row: any) {
   };
 }
 
+// POST /api/auth/google
+router.post('/auth/google', async (req, res) => {
+  try {
+    const { email, firstName, lastName, avatar, googleId } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required for Google Sign-In' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = await query(`SELECT * FROM users WHERE LOWER(email) = $1`, [cleanEmail]);
+
+    let userRow: any;
+    if (existing.rows.length > 0) {
+      userRow = existing.rows[0];
+      // Update avatar or names if available
+      const updates: any[] = [];
+      const setParts: string[] = [];
+
+      if (avatar && !userRow.avatar) {
+        updates.push(avatar);
+        setParts.push(`avatar = $${updates.length}`);
+      }
+      if (firstName && !userRow.first_name) {
+        updates.push(firstName);
+        setParts.push(`first_name = $${updates.length}`);
+      }
+      if (lastName && !userRow.last_name) {
+        updates.push(lastName);
+        setParts.push(`last_name = $${updates.length}`);
+      }
+
+      if (setParts.length > 0) {
+        updates.push(userRow.id);
+        await query(`UPDATE users SET ${setParts.join(', ')} WHERE id = $${updates.length}`, updates);
+        const refetched = await query(`SELECT * FROM users WHERE id = $1`, [userRow.id]);
+        userRow = refetched.rows[0];
+      }
+    } else {
+      const id = `cust-${Date.now()}`;
+      await query(
+        `INSERT INTO users (id, email, password, first_name, last_name, phone, role, avatar, status, registered_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+        [id, cleanEmail, `google_${googleId || Date.now()}`, firstName || '', lastName || '', '', 'customer', avatar || null, 'Active']
+      );
+      const created = await query(`SELECT * FROM users WHERE id = $1`, [id]);
+      userRow = created.rows[0];
+    }
+
+    const customer = await formatCustomer(userRow);
+    const token = jwt.sign({ id: userRow.id, email: userRow.email, role: userRow.role }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({ customer, token });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/auth/register
 router.post('/auth/register', async (req, res) => {
   try {

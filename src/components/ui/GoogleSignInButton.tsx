@@ -1,8 +1,8 @@
+import React, { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
 
 interface GoogleSignInButtonProps {
   label?: string;
@@ -18,16 +18,17 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+
   const redirectTo = redirect || searchParams.get('redirect') || '/account';
 
-  const login = useGoogleLogin({
+  const loginWithGoogle = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setIsLoading(true);
       try {
-        // Fetch user info from Google using the access token
         const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         });
+        if (!res.ok) throw new Error('Failed to retrieve user profile from Google');
         const profile = await res.json();
 
         const user = await googleLogin({
@@ -44,20 +45,22 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
           type: 'success',
         });
         navigate(user.role === 'admin' ? '/admin' : redirectTo);
-      } catch {
+      } catch (err: any) {
+        console.error('[Google Auth Error]', err);
         showToast({
-          title: 'Google Sign-In Failed',
-          message: 'Could not authenticate with Google. Please try again.',
+          title: 'Google Sign-In Error',
+          message: err.message || 'Could not authenticate with Google.',
           type: 'error',
         });
       } finally {
         setIsLoading(false);
       }
     },
-    onError: () => {
+    onError: (errorResponse) => {
+      console.warn('[Google OAuth Error]', errorResponse);
       showToast({
-        title: 'Google Sign-In Failed',
-        message: 'Google authentication was cancelled or failed.',
+        title: 'Google Sign-In',
+        message: 'Google Sign-In was cancelled or failed.',
         type: 'error',
       });
     },
@@ -66,17 +69,17 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   return (
     <button
       type="button"
-      onClick={() => login()}
+      onClick={() => loginWithGoogle()}
       disabled={isLoading}
-      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white border border-sand-300 text-charcoal-800 text-[11px] font-medium hover:bg-sand-100 transition-colors disabled:opacity-60"
+      className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-white border border-sand-300 text-charcoal-800 text-xs font-medium hover:bg-sand-100 transition-colors disabled:opacity-60 cursor-pointer shadow-xs"
     >
-      <svg width="16" height="16" viewBox="0 0 48 48">
+      <svg width="18" height="18" viewBox="0 0 48 48">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
         <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
         <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
       </svg>
-      {isLoading ? 'Signing in...' : label}
+      <span>{isLoading ? 'Signing in...' : label}</span>
     </button>
   );
 };

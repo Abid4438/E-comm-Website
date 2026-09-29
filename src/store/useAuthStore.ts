@@ -67,25 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   googleLogin: async (data) => {
     set({ isLoading: true });
     try {
-      // Use the register flow which auto-logs in, or falls back to login if exists
-      const { customer } = await customerService.register({
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-      });
-
-      // Update avatar if provided by Google
-      if (data.avatar) {
-        const updated = await customerService.updateProfile(customer.id, { avatar: data.avatar });
-        set({
-          user: updated,
-          isAuthenticated: true,
-          isAdmin: updated.role === 'admin',
-          isLoading: false,
-        });
-        return updated;
-      }
-
+      const { customer } = await customerService.googleLogin(data);
       set({
         user: customer,
         isAuthenticated: true,
