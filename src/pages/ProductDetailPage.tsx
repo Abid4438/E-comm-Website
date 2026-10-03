@@ -60,7 +60,16 @@ export const ProductDetailPage: React.FC = () => {
   const { showToast } = useToastStore();
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    // Live refresh: re-fetch product every 60s while viewing
+  useEffect(() => {
+    if (!slug) return;
+    const interval = setInterval(() => {
+      fetchProduct();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [slug]);
+
+  const fetchProduct = async () => {
       if (!slug) return;
       setIsLoading(true);
       try {
@@ -221,7 +230,7 @@ export const ProductDetailPage: React.FC = () => {
         type: 'info',
       });
     } catch {
-      // ignore
+      // ignore vote errors silently
     }
   };
 

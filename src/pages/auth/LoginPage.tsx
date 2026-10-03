@@ -56,6 +56,9 @@ export const LoginPage: React.FC = () => {
         type: 'success',
       });
       navigate(user.role === 'admin' ? '/admin' : redirect);
+    } catch (err: any) {
+      console.error('[Demo Login Error]', err);
+      showToast({ title: 'Demo Error', message: err.message || 'Quick demo sign-in failed.', type: 'error' });
     } finally {
       setIsLoading(false);
     }

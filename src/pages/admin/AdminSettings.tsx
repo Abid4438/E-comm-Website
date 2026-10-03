@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { useToastStore } from '../../store/useToastStore';
-import { Save, ShieldCheck, Database, Globe } from 'lucide-react';
+import { Save, Database, Globe } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
   const [storeName, setStoreName] = useState('MOSS Lifestyle');

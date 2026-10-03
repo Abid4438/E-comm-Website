@@ -18,11 +18,8 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
-  Truck,
   Eye,
   Shield,
-  CreditCard,
-  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 

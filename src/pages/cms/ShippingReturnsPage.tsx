@@ -3,7 +3,7 @@ import { Breadcrumbs } from '../../components/ui/Breadcrumbs';
 import { SEOHead } from '../../components/ui/SEOHead';
 import { Button } from '../../components/ui/Button';
 import { useToastStore } from '../../store/useToastStore';
-import { Truck, RotateCcw, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 export const ShippingReturnsPage: React.FC = () => {
   const [orderNumber, setOrderNumber] = useState('');

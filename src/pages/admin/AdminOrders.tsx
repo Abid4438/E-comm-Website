@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { useToastStore } from '../../store/useToastStore';
-import { Search, Eye, Truck, Check } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 
 const ALL_STATUSES: OrderStatus[] = [
   'Pending',

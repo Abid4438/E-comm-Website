@@ -23,13 +23,14 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
 
   const loginWithGoogle = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      setIsLoading(true);
       try {
         const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         });
         if (!res.ok) throw new Error('Failed to retrieve user profile from Google');
         const profile = await res.json();
+
+        if (!profile.email) throw new Error('Google account did not provide an email address.');
 
         const user = await googleLogin({
           email: profile.email,
@@ -57,19 +58,29 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       }
     },
     onError: (errorResponse) => {
-      console.warn('[Google OAuth Error]', errorResponse);
-      showToast({
-        title: 'Google Sign-In',
-        message: 'Google Sign-In was cancelled or failed.',
-        type: 'error',
-      });
+      setIsLoading(false);
+      // error_code is set for actual failures; absence means the user closed the popup
+      if (errorResponse.error && errorResponse.error !== 'access_denied') {
+        console.error('[Google OAuth Error]', errorResponse);
+        showToast({
+          title: 'Google Sign-In Failed',
+          message: errorResponse.error_description || 'Google Sign-In encountered an error.',
+          type: 'error',
+        });
+      }
     },
   });
+
+  const handleClick = () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    loginWithGoogle();
+  };
 
   return (
     <button
       type="button"
-      onClick={() => loginWithGoogle()}
+      onClick={handleClick}
       disabled={isLoading}
       className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-white border border-sand-300 text-charcoal-800 text-xs font-medium hover:bg-sand-100 transition-colors disabled:opacity-60 cursor-pointer shadow-xs"
     >

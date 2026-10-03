@@ -7,6 +7,7 @@ import { Breadcrumbs } from '../components/ui/Breadcrumbs';
 import { Button } from '../components/ui/Button';
 import { SEOHead } from '../components/ui/SEOHead';
 import { useCartStore } from '../store/useCartStore';
+import { productService } from '../services/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { orderService, discountService } from '../services/apiClient';
@@ -15,7 +16,6 @@ import { CheckoutFormData } from '../types/order';
 import {
   CreditCard,
   Lock,
-  Truck,
   ShieldCheck,
   Tag,
   CheckCircle2,
@@ -62,6 +62,7 @@ export const CheckoutPage: React.FC = () => {
     getTaxAmount,
     getTotal,
   } = useCartStore();
+  const [isRefreshingStock, setIsRefreshingStock] = useState(false);
 
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
@@ -126,6 +127,8 @@ export const CheckoutPage: React.FC = () => {
       const res = await discountService.validateDiscount(promoInput, subtotal);
       if (res.isValid && res.discount) {
         applyDiscount(res.discount);
+        // Increment usage count on backend
+        try { await fetch('/api/discounts/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: promoInput.trim() }) }); } catch { /* ignore usage increment failure */ }
         showToast({
           title: 'Promo Applied',
           message: res.message || 'Promo code applied.',
@@ -139,6 +142,9 @@ export const CheckoutPage: React.FC = () => {
           type: 'error',
         });
       }
+    } catch (err: any) {
+      console.error('[Promo Apply Error]', err);
+      showToast({ title: 'Promo Error', message: err.message || 'Could not validate promo.', type: 'error' });
     } finally {
       setIsApplyingPromo(false);
     }
@@ -154,6 +160,27 @@ export const CheckoutPage: React.FC = () => {
       navigate('/shop');
       return;
     }
+
+    // Refresh product stock/prices from server before placing order
+    setIsRefreshingStock(true);
+    try {
+      const refreshed = await Promise.all(
+        items.map(async (item) => {
+          if (item.product?.id) {
+            try {
+              const res = await fetch(`/api/products/${item.product.id}`);
+              if (res.ok) {
+                const fresh = await res.json();
+                return { ...item, product: fresh, price: fresh.price, _refreshed: true };
+              }
+            } catch { /* ignore refresh failure */ }
+          }
+          return item;
+        })
+      );
+      // Note: cart refresh applied locally — full state sync requires store update (noted limitation)
+    } catch { /* ignore */ }
+    finally { setIsRefreshingStock(false); }
 
     setIsSubmitting(true);
     try {

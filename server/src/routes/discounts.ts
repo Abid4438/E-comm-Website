@@ -66,6 +66,18 @@ router.post('/validate', async (req, res) => {
   }
 });
 
+// POST /api/discounts/apply (increment usage after apply)
+router.post('/apply', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Code required' });
+    await query(`UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = $1`, [code.trim().toUpperCase()]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/discounts (Create)
 router.post('/', async (req, res) => {
   try {

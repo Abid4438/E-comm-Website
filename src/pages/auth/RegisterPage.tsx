@@ -8,8 +8,6 @@ import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
 import { ArrowRight, Shield } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  const [verified, setVerified] = useState(false);
-
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -21,7 +19,6 @@ export const RegisterPage: React.FC = () => {
   const { register: registerUser } = useAuthStore();
   const { showToast } = useToastStore();
   const navigate = useNavigate();
-  const handleVerify = () => { setVerified(true); showToast({ title: 'Email Verified', message: 'Check your inbox and confirm.', type: 'success' }); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

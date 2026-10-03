@@ -3,7 +3,7 @@ import { reviewService } from '../../services/apiClient';
 import { Review } from '../../types/review';
 import { Rating } from '../../components/ui/Rating';
 import { useToastStore } from '../../store/useToastStore';
-import { Check, X, Star } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 export const AdminReviews: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);

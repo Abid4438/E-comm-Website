@@ -8,7 +8,6 @@ import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 export const AdminCategories: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const { showToast } = useToastStore();
@@ -24,12 +23,11 @@ export const AdminCategories: React.FC = () => {
   });
 
   const loadCategories = async () => {
-    setIsLoading(true);
     try {
       const data = await categoryService.getCategories();
       setCategories(data);
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // silent
     }
   };
 

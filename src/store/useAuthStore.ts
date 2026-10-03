@@ -7,7 +7,7 @@ interface GoogleLoginData {
   firstName: string;
   lastName: string;
   avatar?: string;
-  googleId: string;
+  googleId?: string;
 }
 
 interface AuthState {

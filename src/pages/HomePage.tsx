@@ -21,14 +21,18 @@ export const HomePage: React.FC = () => {
 
   useEffect(() => {
     const loadHomeData = async () => {
-      const [arrivals, best, revs] = await Promise.all([
-        productService.getNewArrivals(4),
-        productService.getBestSellers(4),
-        reviewService.getAllReviews(),
-      ]);
-      setNewArrivals(arrivals);
-      setBestSellers(best);
-      setReviews(revs.slice(0, 3));
+      try {
+        const [arrivals, best, revs] = await Promise.all([
+          productService.getNewArrivals(4),
+          productService.getBestSellers(4),
+          reviewService.getAllReviews(),
+        ]);
+        setNewArrivals(arrivals);
+        setBestSellers(best);
+        setReviews(revs.slice(0, 3));
+      } catch (err) {
+        console.error('[Home Load Error]', err);
+      }
     };
 
     loadHomeData();

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Breadcrumbs } from '../../components/ui/Breadcrumbs';
 import { SEOHead } from '../../components/ui/SEOHead';
 import { Button } from '../../components/ui/Button';
-import { Sparkles, Compass, Feather, ShieldCheck, MapPin } from 'lucide-react';
+import { Compass, Feather, ShieldCheck, MapPin } from 'lucide-react';
 
 export const AboutPage: React.FC = () => {
   return (

@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   Menu,
   X,
-  Bell,
   ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';

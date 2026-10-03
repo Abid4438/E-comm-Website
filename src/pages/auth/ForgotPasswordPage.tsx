@@ -11,8 +11,7 @@ export const ForgotPasswordPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToastStore();
 
-  const [tokenSent, setTokenSent] = useState(false);
-  const [tokenExpiry, setTokenExpiry] = useState('30 min');
+  const [tokenExpiry] = useState('30 min');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +21,6 @@ export const ForgotPasswordPage: React.FC = () => {
     setTimeout(() => {
       setIsLoading(false);
     setIsSent(true);
-    setTokenSent(true);
     showToast({
         title: 'Reset Link Dispatched',
         message: `A secure password reset link (expires in ${tokenExpiry}) has been sent to ${email}.`,

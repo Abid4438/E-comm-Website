@@ -62,7 +62,7 @@ export function App() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/db-download" element={<button onClick={handleDbDownload} className="fixed bottom-4 right-4 px-4 py-2 bg-moss-900 text-white text-xs">Download DB</button>} />
+          <Route path="/db-download" element={<button type="button" onClick={handleDbDownload} className="fixed bottom-4 right-4 px-4 py-2 bg-moss-900 text-white text-xs">Download DB</button>} />
           {/* PUBLIC STOREFRONT */}
           <Route element={<StoreLayout />}>
             <Route path="/" element={<HomePage />} />
@@ -78,7 +78,7 @@ export function App() {
             {/* Auth */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Account */}

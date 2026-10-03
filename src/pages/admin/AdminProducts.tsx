@@ -12,7 +12,6 @@ import {
   Search,
   Edit2,
   Trash2,
-  Package,
   Eye,
 } from 'lucide-react';
 
@@ -61,6 +60,9 @@ export const AdminProducts: React.FC = () => {
     if (searchParams.get('action') === 'new') {
       setIsAddModalOpen(true);
     }
+    // Auto-refresh every 30s while page is open
+    const interval = setInterval(() => { loadProducts(); }, 30000);
+    return () => clearInterval(interval);
   }, [searchParams]);
 
   const handleOpenAdd = () => {

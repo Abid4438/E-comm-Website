@@ -21,7 +21,6 @@ import {
   Plus,
   TrendingUp,
   Tag,
-  Lock,
   BellRing,
   ShieldCheck,
 } from 'lucide-react';
