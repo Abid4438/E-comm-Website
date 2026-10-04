@@ -230,12 +230,12 @@ export const INITIAL_DISCOUNTS: Discount[] = [
     id: 'disc-001',
     code: 'WELCOME10',
     percentage: 10,
-    minSpend: 50,
+    minSpend: 25000,
     expiresAt: '2026-12-31T23:59:59Z',
     usageCount: 142,
     maxUses: 1000,
     isActive: true,
-    description: '10% off your first order over $50'
+    description: '10% off your first order over Rs 25,000'
   },
   {
     id: 'disc-002',

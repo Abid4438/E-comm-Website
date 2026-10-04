@@ -65,9 +65,6 @@ export const AdminProducts: React.FC = () => {
     if (searchParams.get('action') === 'new') {
       setIsAddModalOpen(true);
     }
-    // Auto-refresh every 30s while page is open
-    const interval = setInterval(() => { loadProducts(); }, 30000);
-    return () => clearInterval(interval);
   }, [searchParams]);
 
   const handleOpenAdd = () => {
@@ -329,8 +326,7 @@ dimensions: formData.dimensions || '',
                   <tr key={p.id} className="hover:bg-sand-100/50 transition-colors">
                     <td className="p-3.5">
                       <img
-                        src={p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=400&q=80'}
-                        onError={(e) => { const target = e.currentTarget; target.src = 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=400&q=80'; }}
+                        src={p.images[0]}
                         alt={p.name}
                         className="w-10 h-12 object-cover bg-sand-200 border border-sand-300"
                       />

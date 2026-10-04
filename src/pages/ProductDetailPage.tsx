@@ -60,16 +60,7 @@ export const ProductDetailPage: React.FC = () => {
   const { showToast } = useToastStore();
 
   useEffect(() => {
-    // Live refresh: re-fetch product every 60s while viewing
-  useEffect(() => {
-    if (!slug) return;
-    const interval = setInterval(() => {
-      fetchProduct();
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [slug]);
-
-  const fetchProduct = async () => {
+    const fetchProduct = async () => {
       if (!slug) return;
       setIsLoading(true);
       try {
@@ -328,8 +319,7 @@ export const ProductDetailPage: React.FC = () => {
           {/* Main Large Image */}
           <div className="relative aspect-[4/5] w-full bg-sand-100 border border-sand-200 overflow-hidden group">
             <img
-              src={product.images[selectedImageIndex] || product.images[0] || 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80'}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80'; }}
+              src={product.images[selectedImageIndex] || product.images[0]}
               alt={product.name}
               className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105 cursor-zoom-in"
               onClick={() => setIsZoomOpen(true)}

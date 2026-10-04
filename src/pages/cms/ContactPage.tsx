@@ -47,7 +47,7 @@ export const ContactPage: React.FC = () => {
           Concierge & Support
         </h1>
         <p className="mt-2 text-xs sm:text-sm text-charcoal-600 max-w-2xl font-light">
-          Have an inquiry regarding object dimensions, order status, private trade orders, or bespoke hospitality gifting? Our Portland studio concierge is at your service.
+          Reach out at <strong>Abidaliaslam282@gmail.com</strong> — we'll respond within 24 hours. Studio located in your city; private appointments available on request.
         </p>
       </div>
 
@@ -163,8 +163,8 @@ export const ContactPage: React.FC = () => {
                 <Mail className="w-4 h-4 text-moss-800 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-charcoal-900 block">Email Concierge</span>
-                  <a href="mailto:concierge@mosslifestyle.com" className="hover:underline">
-                    concierge@mosslifestyle.com
+                  <a href="mailto:Abidaliaslam282@gmail.com" className="hover:underline">
+                   Abidaliaslam282@gmail.com
                   </a>
                 </div>
               </div>
@@ -173,7 +173,7 @@ export const ContactPage: React.FC = () => {
                 <Phone className="w-4 h-4 text-moss-800 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-charcoal-900 block">Telephone</span>
-                  <span>+1 (800) 555-MOSS (6677)</span>
+                  <span>+923041454342</span>
                 </div>
               </div>
 
@@ -181,7 +181,8 @@ export const ContactPage: React.FC = () => {
                 <Clock className="w-4 h-4 text-moss-800 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-charcoal-900 block">Support Hours</span>
-                  <span>Monday – Friday: 8:00 AM – 6:00 PM PST</span>
+                  <span>Monday – Sunday: 10:00 AM – 6:00 PM</span>
+                  <span>Private appointments available.</span>
                 </div>
               </div>
 
@@ -189,7 +190,8 @@ export const ContactPage: React.FC = () => {
                 <MapPin className="w-4 h-4 text-moss-800 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-charcoal-900 block">Flagship Showroom</span>
-                  <span>450 NW 10th Ave, Pearl District, Portland, OR 97209</span>
+                  <span>Lahore, Pakistan</span>
+                  <span>Replace with your studio address.</span>
                 </div>
               </div>
             </div>

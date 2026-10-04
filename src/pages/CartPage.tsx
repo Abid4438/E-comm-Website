@@ -268,9 +268,9 @@ export const CartPage: React.FC = () => {
                     </Button>
                   </form>
                 )}
-                <p className="text-[10px] text-charcoal-400 mt-1">
-                  Try codes: <strong>WELCOME10</strong> or <strong>MOSS20</strong>
-                </p>
+                  <p className="text-[10px] text-charcoal-400 mt-1 font-medium tracking-wide">
+                    <strong>WELCOME10</strong> — 10% off for first-time customers. No minimum amount shown.
+                  </p>
               </div>
 
               {/* Breakdown lines */}

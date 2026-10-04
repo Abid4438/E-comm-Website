@@ -62,7 +62,6 @@ export const CheckoutPage: React.FC = () => {
     getTaxAmount,
     getTotal,
   } = useCartStore();
-  const [isRefreshingStock, setIsRefreshingStock] = useState(false);
 
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
@@ -160,27 +159,6 @@ export const CheckoutPage: React.FC = () => {
       navigate('/shop');
       return;
     }
-
-    // Refresh product stock/prices from server before placing order
-    setIsRefreshingStock(true);
-    try {
-      const refreshed = await Promise.all(
-        items.map(async (item) => {
-          if (item.product?.id) {
-            try {
-              const res = await fetch(`/api/products/${item.product.id}`);
-              if (res.ok) {
-                const fresh = await res.json();
-                return { ...item, product: fresh, price: fresh.price, _refreshed: true };
-              }
-            } catch { /* ignore refresh failure */ }
-          }
-          return item;
-        })
-      );
-      // Note: cart refresh applied locally — full state sync requires store update (noted limitation)
-    } catch { /* ignore */ }
-    finally { setIsRefreshingStock(false); }
 
     setIsSubmitting(true);
     try {

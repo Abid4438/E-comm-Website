@@ -17,6 +17,7 @@ export const HomePage: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterJoined, setNewsletterJoined] = useState(false);
+  const [showPromoBanner, setShowPromoBanner] = useState(true);
   const { showToast } = useToastStore();
 
   useEffect(() => {
@@ -58,6 +59,19 @@ export const HomePage: React.FC = () => {
   };
 
   return (
+    <>
+      {showPromoBanner && (
+        <div className="relative bg-moss-900 text-sand-50 text-center py-3 px-4 text-xs tracking-widest font-medium uppercase">
+          <span>First Customer — 10% Off · Use WELCOME10</span>
+          <button
+            onClick={() => setShowPromoBanner(false)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-300 hover:text-white text-xs font-bold px-1"
+            aria-label="Close promo"
+          >
+            ×
+          </button>
+        </div>
+      )}
     <div className="flex flex-col w-full">
       <SEOHead
         title="MOSS | Thoughtfully Designed Everyday Essentials"
@@ -523,5 +537,6 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
     </div>
+    </>
   );
 };
