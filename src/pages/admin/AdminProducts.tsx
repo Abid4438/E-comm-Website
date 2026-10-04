@@ -35,6 +35,11 @@ export const AdminProducts: React.FC = () => {
     tagline: '',
     shortDescription: '',
     description: '',
+    detailsInput: '',
+    materialsInput: '',
+    dimensions: '',
+    shippingInfo: '',
+    returnsInfo: '',
     price: 95,
     compareAtPrice: 0,
     category: 'home' as CategoryType,
@@ -73,14 +78,19 @@ export const AdminProducts: React.FC = () => {
       tagline: '',
       shortDescription: '',
       description: '',
-      price: 120,
+      detailsInput: '',
+      materialsInput: '',
+      dimensions: '',
+      shippingInfo: '',
+      returnsInfo: '',
+      price: 0,
       compareAtPrice: 0,
       category: 'home',
-      stock: 30,
-      badge: 'NEW',
+      stock: 0,
+      badge: '',
       imageUrl: 'https://images.unsplash.com/photo-1616423640778-28d1b53229bd?auto=format&fit=crop&w=1200&q=80',
-      colorsInput: 'Sand (#D2C8BC), Moss (#3B4D3C)',
-      sizesInput: 'Standard',
+      colorsInput: '',
+      sizesInput: '',
     });
     setIsAddModalOpen(true);
   };
@@ -94,6 +104,11 @@ export const AdminProducts: React.FC = () => {
       tagline: p.tagline || '',
       shortDescription: p.shortDescription,
       description: p.description,
+      detailsInput: (p.details || []).join('\n'),
+      materialsInput: (p.materials || []).join('\n'),
+      dimensions: p.dimensions || '',
+      shippingInfo: p.shippingInfo || '',
+      returnsInfo: p.returnsInfo || '',
       price: p.price,
       compareAtPrice: p.compareAtPrice || 0,
       category: p.category,
@@ -145,6 +160,15 @@ export const AdminProducts: React.FC = () => {
           tagline: formData.tagline,
           shortDescription: formData.shortDescription,
           description: formData.description,
+          details: formData.detailsInput
+            ? formData.detailsInput.split('\n').map((line) => line.trim()).filter(Boolean)
+            : editingProduct.details,
+          materials: formData.materialsInput
+            ? formData.materialsInput.split('\n').map((line) => line.trim()).filter(Boolean)
+            : editingProduct.materials,
+dimensions: formData.dimensions || '',
+          shippingInfo: formData.shippingInfo || '',
+          returnsInfo: formData.returnsInfo || '',
           price: Number(formData.price),
           compareAtPrice: formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined,
           category: formData.category,
@@ -166,20 +190,25 @@ export const AdminProducts: React.FC = () => {
           tagline: formData.tagline,
           shortDescription: formData.shortDescription,
           description: formData.description,
-          details: ['Handcrafted in small studio batches', 'Premium natural materials', 'Lifetime quality warranty'],
-          materials: ['Natural raw sustainable fibers and stone'],
-          shippingInfo: 'Standard shipping 3-5 business days.',
-          returnsInfo: '30-day return policy.',
+          details: formData.detailsInput
+            ? formData.detailsInput.split('\n').map((line) => line.trim()).filter(Boolean)
+            : [],
+          materials: formData.materialsInput
+            ? formData.materialsInput.split('\n').map((line) => line.trim()).filter(Boolean)
+            : [],
+dimensions: formData.dimensions || '',
+          shippingInfo: formData.shippingInfo || '',
+          returnsInfo: formData.returnsInfo || '',
           price: Number(formData.price),
           compareAtPrice: formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined,
           category: formData.category,
+          stock: Number(formData.stock),
+          badge: (formData.badge as ProductBadge) || undefined,
           images: [formData.imageUrl || 'https://images.unsplash.com/photo-1616423640778-28d1b53229bd?auto=format&fit=crop&w=1200&q=80'],
           colors: parsedColors.length ? parsedColors : [{ name: 'Standard', hex: '#D2C8BC', inStock: true }],
           sizes: parsedSizes.length ? parsedSizes : [{ name: 'One Size', inStock: true }],
           rating: 5.0,
           reviewCount: 0,
-          stock: Number(formData.stock),
-          badge: (formData.badge as ProductBadge) || undefined,
           status: 'active',
         });
 
@@ -300,7 +329,8 @@ export const AdminProducts: React.FC = () => {
                   <tr key={p.id} className="hover:bg-sand-100/50 transition-colors">
                     <td className="p-3.5">
                       <img
-                        src={p.images[0]}
+                        src={p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=400&q=80'}
+                        onError={(e) => { const target = e.currentTarget; target.src = 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=400&q=80'; }}
                         alt={p.name}
                         className="w-10 h-12 object-cover bg-sand-200 border border-sand-300"
                       />
@@ -480,6 +510,72 @@ export const AdminProducts: React.FC = () => {
                 <option value="HANDCRAFTED">HANDCRAFTED</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+              Product Details (one per line)
+            </label>
+            <textarea
+              rows={4}
+              value={formData.detailsInput}
+              onChange={(e) => setFormData({ ...formData, detailsInput: e.target.value })}
+              placeholder="Handcrafted in small studio batches&#10;Premium natural materials&#10;Lifetime quality warranty"
+              className="w-full bg-[#FAF8F5] border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+              Materials (one per line)
+            </label>
+            <textarea
+              rows={3}
+              value={formData.materialsInput}
+              onChange={(e) => setFormData({ ...formData, materialsInput: e.target.value })}
+              placeholder="Natural raw sustainable fibers and stone&#10;Eco-friendly dyes"
+              className="w-full bg-[#FAF8F5] border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                Dimensions
+              </label>
+              <input
+                type="text"
+                value={formData.dimensions}
+                onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+                placeholder="e.g. 30 x 20 x 15 cm"
+                className="w-full bg-[#FAF8F5] border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                Shipping Info
+              </label>
+              <input
+                type="text"
+                value={formData.shippingInfo}
+                onChange={(e) => setFormData({ ...formData, shippingInfo: e.target.value })}
+                placeholder="Free standard shipping on orders over $100..."
+                className="w-full bg-[#FAF8F5] border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+              Returns Info
+            </label>
+            <input
+              type="text"
+              value={formData.returnsInfo}
+              onChange={(e) => setFormData({ ...formData, returnsInfo: e.target.value })}
+              placeholder="Complimentary 30-day returns..."
+              className="w-full bg-[#FAF8F5] border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+            />
           </div>
 
           <div>

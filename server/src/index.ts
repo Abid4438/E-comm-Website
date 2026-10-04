@@ -41,7 +41,8 @@ async function startServer() {
   try {
     console.log('[Server] Initializing PostgreSQL database...');
     await initDB();
-    await seedDatabase();
+    // Demo seed removed — all products must come from DB / admin panel only
+    // await seedDatabase();
 
     app.listen(PORT, () => {
       console.log(`[Server] MOSS PostgreSQL Backend running on http://localhost:${PORT}`);

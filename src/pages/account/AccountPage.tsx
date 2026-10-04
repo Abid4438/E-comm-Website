@@ -140,7 +140,7 @@ export const AccountPage: React.FC = () => {
         city: '',
         state: '',
         postalCode: '',
-        country: 'United States',
+    country: 'Pakistan',
         phone: user.phone,
         isDefault: false,
       });

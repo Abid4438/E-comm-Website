@@ -43,9 +43,9 @@ export const ShippingReturnsPage: React.FC = () => {
 
       {/* Shipping Options Table */}
       <div className="py-12 space-y-6">
-        <h3 className="font-serif text-2xl text-charcoal-900 font-normal">
-          Domestic Shipping Rates (US)
-        </h3>
+          <h3 className="font-serif text-2xl text-charcoal-900 font-normal">
+            Domestic Shipping Rates (Pakistan)
+          </h3>
 
         <div className="overflow-x-auto border border-sand-300">
           <table className="w-full text-left text-xs">
@@ -53,28 +53,28 @@ export const ShippingReturnsPage: React.FC = () => {
               <tr>
                 <th className="p-4">Delivery Service</th>
                 <th className="p-4">Estimated Transit Time</th>
-                <th className="p-4">Order Value &lt; $100</th>
-                <th className="p-4">Order Value $100+</th>
+                <th className="p-4">Order Value &lt; Rs 28,000</th>
+                <th className="p-4">Order Value Rs 28,000+</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-sand-200 bg-[#FAF8F5] text-charcoal-700">
               <tr>
                 <td className="p-4 font-medium text-charcoal-900">Standard Ground</td>
                 <td className="p-4">3 to 5 business days</td>
-                <td className="p-4">$12.00</td>
+                <td className="p-4">Rs 3,360</td>
                 <td className="p-4 font-semibold text-moss-900">Complimentary (Free)</td>
               </tr>
               <tr>
                 <td className="p-4 font-medium text-charcoal-900">DHL Express Courier</td>
                 <td className="p-4">1 to 2 business days</td>
-                <td className="p-4">$25.00</td>
-                <td className="p-4">$25.00</td>
+                <td className="p-4">Rs 7,000</td>
+                <td className="p-4">Rs 7,000</td>
               </tr>
               <tr>
                 <td className="p-4 font-medium text-charcoal-900">Overnight Priority</td>
                 <td className="p-4">Next business day by 12:00 PM</td>
-                <td className="p-4">$40.00</td>
-                <td className="p-4">$40.00</td>
+                <td className="p-4">Rs 11,200</td>
+                <td className="p-4">Rs 11,200</td>
               </tr>
             </tbody>
           </table>

@@ -190,7 +190,7 @@ export const Footer: React.FC = () => {
           <p>© {new Date().getFullYear()} MOSS Lifestyle Inc. All rights reserved.</p>
 
           <div className="flex items-center space-x-4 text-[11px]">
-            <span>USD ($) · United States</span>
+            <span>PKR (Rs) · Pakistan</span>
             <span>·</span>
             <span>Carbon Neutral Certified</span>
           </div>

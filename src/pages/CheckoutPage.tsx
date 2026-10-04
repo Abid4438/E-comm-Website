@@ -93,7 +93,7 @@ export const CheckoutPage: React.FC = () => {
       city: defaultAddress?.city || '',
       state: defaultAddress?.state || '',
       postalCode: defaultAddress?.postalCode || '',
-      country: defaultAddress?.country || 'United States',
+      country: defaultAddress?.country || 'Pakistan',
       deliveryMethod: shippingOption || 'standard',
       paymentMethod: 'credit_card',
       cardNumber: '4242 •••• •••• 4242',
@@ -476,8 +476,9 @@ export const CheckoutPage: React.FC = () => {
                   {...register('country')}
                   className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
                 >
-                  <option value="United States">United States</option>
-                  <option value="Canada">Canada</option>
+                <option value="Pakistan">Pakistan</option>
+                <option value="United States">United States</option>
+                <option value="Canada">Canada</option>
                   <option value="United Kingdom">United Kingdom</option>
                   <option value="France">France</option>
                   <option value="Germany">Germany</option>
@@ -500,19 +501,19 @@ export const CheckoutPage: React.FC = () => {
                   id: 'standard',
                   name: 'Standard Carbon-Neutral Ground',
                   timing: '3-5 business days',
-                  price: subtotal >= 100 ? 'Free' : '$12.00',
+                  price: subtotal >= 28000 ? 'Free' : 'Rs 3,360',
                 },
                 {
                   id: 'express',
                   name: 'DHL Express Courier',
                   timing: '1-2 business days',
-                  price: '$25.00',
+                  price: 'Rs 7,000',
                 },
                 {
                   id: 'overnight',
                   name: 'Overnight Priority Delivery',
                   timing: 'Next business day by 12:00 PM',
-                  price: '$40.00',
+                  price: 'Rs 11,200',
                 },
               ].map((opt) => (
                 <label

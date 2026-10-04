@@ -23,11 +23,11 @@ export const sendVerificationEmail = async (email: string) => ({ sent: true, ema
 
 export const API_CONFIG = {
   isMock: false,
-  currency: 'USD',
-  currencySymbol: '$',
-  taxRate: 0.08, // 8% estimated tax
-  freeShippingThreshold: 100, // Orders over $100 get free standard shipping
-  standardShippingFee: 12,
-  expressShippingFee: 25,
-  overnightShippingFee: 40,
+  currency: 'PKR',
+  currencySymbol: 'Rs',
+  taxRate: 0.18, // 18% Pakistan GST
+  freeShippingThreshold: 28000, // Orders over Rs 28000 get free standard shipping
+  standardShippingFee: 3360,
+  expressShippingFee: 7000,
+  overnightShippingFee: 11200,
 };

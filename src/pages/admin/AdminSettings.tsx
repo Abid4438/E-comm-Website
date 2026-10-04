@@ -6,9 +6,9 @@ import { Save, Database, Globe } from 'lucide-react';
 export const AdminSettings: React.FC = () => {
   const [storeName, setStoreName] = useState('MOSS Lifestyle');
   const [supportEmail, setSupportEmail] = useState('concierge@mosslifestyle.com');
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState(100);
-  const [taxRate, setTaxRate] = useState(8.0);
-  const [currency, setCurrency] = useState('USD');
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(28000);
+  const [taxRate, setTaxRate] = useState(18.0);
+  const [currency, setCurrency] = useState('PKR');
   const [enableCarbonNeutral, setEnableCarbonNeutral] = useState(true);
   const [magentoGraphQLEndpoint, setMagentoGraphQLEndpoint] = useState('https://demo.magento.com/graphql');
   const { showToast } = useToastStore();
@@ -100,7 +100,7 @@ export const AdminSettings: React.FC = () => {
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full bg-white border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
               >
-                <option value="USD">USD ($) - United States Dollar</option>
+                <option value="PKR" selected>PKR (Rs) - Pakistani Rupee</option>
                 <option value="EUR">EUR (€) - Euro</option>
                 <option value="GBP">GBP (£) - British Pound</option>
                 <option value="JPY">JPY (¥) - Japanese Yen</option>
