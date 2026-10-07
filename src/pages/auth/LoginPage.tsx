@@ -5,6 +5,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
 import { SEOHead } from '../../components/ui/SEOHead';
 import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
+import { isGoogleAuthEnabled } from '../../config/auth';
 import { User, ShieldCheck, ArrowRight, Shield } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -88,7 +89,11 @@ export const LoginPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 p-2 bg-moss-900/5 border border-moss-900/10 text-xs text-charcoal-700">
             <Shield className="w-3.5 h-3.5 text-moss-800" />
-            <span>Secure sign-in with Google available.</span>
+            <span>
+              {isGoogleAuthEnabled
+                ? 'Secure sign-in with Google available.'
+                : 'Google OAuth not configured in this environment. Use email or demo login.'}
+            </span>
           </div>
         </div>
 

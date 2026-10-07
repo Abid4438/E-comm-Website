@@ -5,6 +5,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
 import { SEOHead } from '../../components/ui/SEOHead';
 import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
+import { isGoogleAuthEnabled } from '../../config/auth';
 import { ArrowRight, Shield } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
@@ -73,7 +74,11 @@ export const RegisterPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 p-2 bg-moss-900/5 border border-moss-900/10 text-xs text-charcoal-700">
             <Shield className="w-3.5 h-3.5 text-moss-800" />
-            <span>Fast, one-click registration with your Google account.</span>
+            <span>
+              {isGoogleAuthEnabled
+                ? 'Fast, one-click registration with your Google account.'
+                : 'Google OAuth not configured in this environment. Register with email below.'}
+            </span>
           </div>
           <div className="relative flex items-center justify-center pt-2">
             <div className="border-t border-sand-300 w-full"></div>

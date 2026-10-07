@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,8 +11,6 @@ import {
   Star,
   Settings,
   ArrowLeft,
-  Menu,
-  X,
   ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -32,7 +30,6 @@ const NAV_ITEMS = [
 ];
 
 export const AdminLayout: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user, isAuthenticated, isAdmin } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,24 +42,11 @@ export const AdminLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F2EB] text-[#1A1A1A] flex font-sans antialiased">
-      {/* Mobile Sidebar Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Admin Sidebar */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-[#141F16] text-[#FAF8F5] flex flex-col justify-between border-r border-[#253828] transition-transform duration-300 lg:static lg:translate-x-0',
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        )}
-      >
-        <div>
+      {/* Admin Sidebar - Static */}
+      <aside className="w-64 bg-[#141F16] text-[#FAF8F5] flex flex-col justify-between border-r border-[#253828] shrink-0 sticky top-0 h-screen">
+        <div className="flex flex-col flex-1 min-h-0">
           {/* Brand Header */}
-          <div className="p-6 border-b border-[#253828] flex items-center justify-between">
+          <div className="p-6 border-b border-[#253828] flex items-center justify-between shrink-0">
             <Link to="/admin" className="flex items-center space-x-2">
               <span className="font-serif text-2xl font-medium tracking-[0.2em] uppercase text-[#FAF8F5]">
                 MOSS
@@ -71,16 +55,10 @@ export const AdminLayout: React.FC = () => {
                 ADMIN
               </span>
             </Link>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden text-sand-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
 
           {/* Navigation Items */}
-          <nav className="p-4 space-y-1.5 overflow-y-auto">
+          <nav className="p-4 space-y-1.5 overflow-y-auto flex-1">
             {NAV_ITEMS.map((item) => {
               const isActive = item.exact
                 ? location.pathname === item.path
@@ -90,7 +68,6 @@ export const AdminLayout: React.FC = () => {
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  onClick={() => setIsSidebarOpen(false)}
                   className={cn(
                     'flex items-center gap-3 px-3.5 py-2.5 text-xs uppercase tracking-wider font-medium transition-colors',
                     isActive
@@ -107,7 +84,7 @@ export const AdminLayout: React.FC = () => {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-[#253828] space-y-3">
+        <div className="p-4 border-t border-[#253828] space-y-3 shrink-0">
           <Link
             to="/"
             className="flex items-center justify-between p-2.5 bg-moss-900/80 hover:bg-moss-800 text-xs text-sand-200 transition-colors border border-moss-700"
@@ -130,14 +107,7 @@ export const AdminLayout: React.FC = () => {
         {/* Admin Top Navbar */}
         <header className="h-16 bg-[#FAF8F5] border-b border-sand-300 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 text-charcoal-700 hover:text-charcoal-900"
-              aria-label="Open admin sidebar"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="text-xs uppercase tracking-widest text-charcoal-500 font-semibold hidden sm:inline">
+            <span className="text-xs uppercase tracking-widest text-charcoal-500 font-semibold">
               MOSS Master Console
             </span>
           </div>

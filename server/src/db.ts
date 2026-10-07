@@ -60,7 +60,7 @@ export async function query<T = any>(sql: string, params: any[] = []): Promise<D
     const res = await pglite.query(sql, params);
     return {
       rows: res.rows as T[],
-      rowCount: res.rows.length,
+      rowCount: res.rowCount ?? (res as any).affectedRows ?? res.rows.length,
     };
   }
   throw new Error('Database client not initialized');
