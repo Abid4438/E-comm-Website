@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   define: {
-    'import.meta.env.VITE_APP_URL': JSON.stringify(process.env.APP_URL || 'http://localhost:5173'),
+    'import.meta.env.VITE_APP_URL': JSON.stringify(process.env.APP_URL || 'https://buyfrommoss.vercel.app'),
   },
   server: {
     port: 5173,
