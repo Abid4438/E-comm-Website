@@ -19,6 +19,9 @@ interface AuthState {
   googleLogin: (data: GoogleLoginData) => Promise<Customer>;
   register: (data: { email: string; firstName: string; lastName: string; phone?: string; password?: string }) => Promise<Customer>;
   logout: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }>;
+  resetPassword: (token: string, email: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
+  verifyEmail: (email: string) => Promise<{ sent: boolean; verified: boolean; message: string; verifyUrl?: string; email: string; expiresIn: string }>;
   updateProfile: (updates: Partial<Customer>) => Promise<Customer>;
   refreshUser: () => Promise<void>;
 }
@@ -101,6 +104,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     await customerService.logout();
     set({ user: null, isAuthenticated: false, isAdmin: false, isLoading: false });
+  },
+
+  forgotPassword: async (email) => {
+    const result = await customerService.forgotPassword(email);
+    return result;
+  },
+  resetPassword: async (token, email, newPassword) => {
+    const result = await customerService.resetPassword(token, email, newPassword);
+    return result;
+  },
+  verifyEmail: async (email) => {
+    const result = await customerService.verifyEmail(email);
+    return result;
   },
 
   updateProfile: async (updates) => {

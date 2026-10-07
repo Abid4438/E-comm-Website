@@ -216,5 +216,29 @@ export async function initDB() {
     )
   `);
 
+  // Create Password Reset Tokens Table
+  await query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id VARCHAR(100) PRIMARY KEY,
+      user_id VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(255) NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Create Email Verification Tokens Table
+  await query(`
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      id VARCHAR(100) PRIMARY KEY,
+      user_id VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(255) NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('[Database] Tables initialized successfully');
 }

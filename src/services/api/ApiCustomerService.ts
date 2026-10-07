@@ -1,5 +1,8 @@
 import { ICustomerService } from '../interfaces/ICustomerService';
 import { Customer, Address } from '../../types/customer';
+import { MockCustomerService } from '../mock/MockCustomerService';
+
+const mockCustomerService = new MockCustomerService();
 
 const TOKEN_KEY = 'moss_auth_token';
 
@@ -102,6 +105,76 @@ export class ApiCustomerService implements ICustomerService {
     } catch {
       // ignore
     }
+  }
+
+  async forgotPassword(email: string): Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }> {
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.forgotPassword(email);
+  }
+
+  async resendReset(email: string): Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }> {
+    try {
+      const res = await fetch('/api/auth/resend-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.resendReset(email);
+  }
+
+  async resetPassword(token: string, email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, email, newPassword }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.resetPassword(token, email, newPassword);
+  }
+
+  async verifyEmail(email: string): Promise<{ sent: boolean; verified: boolean; message: string; verifyUrl?: string; email: string; expiresIn: string }> {
+    try {
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.verifyEmail(email);
+  }
+
+  async resendVerification(email: string): Promise<{ sent: boolean; verifyUrl?: string | null; email: string; expiresIn: string }> {
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.resendVerification(email);
   }
 
   async updateProfile(id: string, updates: Partial<Customer>): Promise<Customer> {

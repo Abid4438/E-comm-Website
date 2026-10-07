@@ -138,6 +138,45 @@ export class MockCustomerService implements ICustomerService {
     return { customer: newCustomer, token };
   }
 
+  async forgotPassword(email: string): Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }> {
+    const customers = this.getStoredCustomers();
+    const customer = customers.find(c => c.email.toLowerCase() === email.toLowerCase());
+    const appUrl = (import.meta.env.VITE_APP_URL || 'http://localhost:5173') as string;
+    const token = `reset-${Date.now()}`;
+    return {
+      sent: true,
+      resetUrl: customer ? `${appUrl}/reset-password?token=${token}&email=${encodeURIComponent(email.toLowerCase())}` : null,
+      email: email.toLowerCase(),
+      expiresIn: '30 min',
+    };
+  }
+
+  async resendReset(email: string): Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }> {
+    return this.forgotPassword(email);
+  }
+
+  async resetPassword(token: string, email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    return { success: true, message: 'Password updated successfully.' };
+  }
+
+  async verifyEmail(email: string): Promise<{ sent: boolean; verified: boolean; message: string; verifyUrl?: string; email: string; expiresIn: string }> {
+    const appUrl = (import.meta.env.VITE_APP_URL || 'http://localhost:5173') as string;
+    const token = `verify-${Date.now()}`;
+    return {
+      sent: true,
+      verified: false,
+      message: 'Verification link dispatched.',
+      verifyUrl: `${appUrl}/verify-email-confirm?token=${token}&email=${encodeURIComponent(email.toLowerCase())}`,
+      email: email.toLowerCase(),
+      expiresIn: '30 min',
+    };
+  }
+
+  async resendVerification(email: string): Promise<{ sent: boolean; verifyUrl?: string | null; email: string; expiresIn: string }> {
+    const result = await this.verifyEmail(email);
+    return { sent: true, verifyUrl: result.verifyUrl, email: result.email, expiresIn: result.expiresIn };
+  }
+
   async logout(): Promise<void> {
     localStorage.removeItem(AUTH_KEY);
     localStorage.removeItem('moss_auth_token');
