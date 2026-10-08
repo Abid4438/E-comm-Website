@@ -65,20 +65,21 @@ export class ApiCustomerService implements ICustomerService {
   }
 
   async googleLogin(data: { email: string; firstName: string; lastName: string; avatar?: string; googleId?: string }): Promise<{ customer: Customer; token: string }> {
-    const res = await fetch('/api/auth/google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Google authentication failed' }));
-      throw new Error(err.error || 'Google authentication failed');
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.token) localStorage.setItem(TOKEN_KEY, resData.token);
+        return resData;
+      }
+    } catch {
+      // fallback
     }
-    const resData = await res.json();
-    if (resData.token) {
-      localStorage.setItem(TOKEN_KEY, resData.token);
-    }
-    return resData;
+    return mockCustomerService.googleLogin(data);
   }
 
   async register(data: { email: string; firstName: string; lastName: string; phone?: string; password?: string }): Promise<{ customer: Customer; token: string }> {
