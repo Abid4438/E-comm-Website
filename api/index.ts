@@ -36,7 +36,7 @@ app.use('/api/reviews', reviewsRouter);
 
 let dbInitialized = false;
 
-export default async function handler(req, res) {
+export default async function handler(req: express.Request, res: express.Response) {
   if (!dbInitialized) {
     try {
       await initDB();
