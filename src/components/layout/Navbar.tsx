@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Search, ShoppingBag, Heart, User, Menu, ChevronDown } from 'lucide-react';
+import { Search, ShoppingBag, Heart, User, Menu, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useCartStore } from '../../store/useCartStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -177,6 +177,19 @@ export const Navbar: React.FC = () => {
               >
                 <User className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
               </Link>
+
+              {/* Admin Panel Button (visible only to admins) */}
+              {isAuthenticated && user?.role === 'admin' && (
+                <Link
+                  to="/admin"
+                  className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-moss-900 text-sand-50 text-[10px] uppercase tracking-wider font-semibold hover:bg-moss-800 transition-colors border border-gold-500/40"
+                  aria-label="Open Admin Dashboard"
+                  title="Admin Dashboard"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-gold-500" />
+                  <span>Admin</span>
+                </Link>
+              )}
 
               {/* Cart Drawer Trigger */}
               <button
