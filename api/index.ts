@@ -42,8 +42,9 @@ export default async function handler(req: express.Request, res: express.Respons
       await initDB();
       await seedDatabase();
       dbInitialized = true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Vercel Serverless DB Init Error]', err);
+      return res.status(503).json({ error: 'DB not ready', message: err.message || String(err) });
     }
   }
   return app(req, res);
