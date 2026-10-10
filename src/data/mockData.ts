@@ -1,8 +1,8 @@
-import { Order } from '../types/order';
-import { Customer } from '../types/customer';
-import { Review } from '../types/review';
-import { Discount } from '../types/discount';
-import { INITIAL_PRODUCTS } from './productsData';
+import { Order } from '../types/order.js';
+import { Customer } from '../types/customer.js';
+import { Review } from '../types/review.js';
+import { Discount } from '../types/discount.js';
+import { INITIAL_PRODUCTS } from './productsData.js';
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   {

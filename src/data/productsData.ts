@@ -1,4 +1,4 @@
-import { Product } from '../types/product';
+import { Product } from '../types/product.js';
 
 export const INITIAL_PRODUCTS: Product[] = [
   // HOME
