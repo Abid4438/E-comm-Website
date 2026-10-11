@@ -37,6 +37,23 @@ app.use('/api/reviews', reviewsRouter);
 let dbInitialized = false;
 
 export default async function handler(req: express.Request, res: express.Response) {
+  // Vercel rewrites /api/* to this function and passes the original route in ?path=.
+  // Restore the expected Express URL before dispatching the request.
+  const query = req.query as Record<string, unknown>;
+  const route = typeof query.path === 'string' ? query.path : '';
+  const forwardedParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(query)) {
+    if (key === 'path' || value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) forwardedParams.append(key, String(item));
+    } else {
+      forwardedParams.append(key, String(value));
+    }
+  }
+
+  req.url = `/api/${route.replace(/^\\/+/, '')}${forwardedParams.size ? `?${forwardedParams.toString()}` : ''}`;
+
   if (!dbInitialized) {
     try {
       await initDB();
