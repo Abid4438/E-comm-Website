@@ -20,7 +20,12 @@ export async function getDBClient() {
     return { pool, pglite, isPgLite };
   }
 
-  const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/moss';
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (isProduction && !databaseUrl) {
+    throw new Error('DATABASE_URL is required in production. Configure it in Vercel Project Settings > Environment Variables.');
+  }
 
   try {
     const testPool = new Pool({
@@ -32,9 +37,15 @@ export async function getDBClient() {
     client.release();
     pool = testPool;
     isPgLite = false;
-    console.log(`[Database] Connected successfully to external PostgreSQL at ${databaseUrl}`);
+    console.log('[Database] Connected successfully to external PostgreSQL.');
   } catch (err: any) {
-    console.log(`[Database] External PostgreSQL not accessible (${err.message}). Using embedded PostgreSQL (PGlite) for persistent local database.`);
+    if (isProduction) {
+      // Vercel serverless deployments cannot rely on a local writable, durable database.
+      // Fail clearly instead of silently switching to an ephemeral PGlite directory.
+      throw new Error(`External PostgreSQL connection failed: ${err.message || String(err)}`);
+    }
+
+    console.log(`[Database] External PostgreSQL not accessible (${err.message}). Using embedded PostgreSQL for local development.`);
     const dataDir = path.resolve(process.cwd(), 'server', 'data', 'pgdata');
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
