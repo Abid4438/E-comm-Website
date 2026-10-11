@@ -52,7 +52,7 @@ export default async function handler(req: express.Request, res: express.Respons
     }
   }
 
-  req.url = `/api/${route.replace(/^\\/+/, '')}${forwardedParams.size ? `?${forwardedParams.toString()}` : ''}`;
+  req.url = `/api/${route.replace(/^\/+/, '')}${forwardedParams.size ? `?${forwardedParams.toString()}` : ''}`;
 
   if (!dbInitialized) {
     try {
