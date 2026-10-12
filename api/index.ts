@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { initDB } from '../server/src/db';
+import { initDB, query } from '../server/src/db';
 import { seedDatabase } from '../server/src/seed';
 import productsRouter from '../server/src/routes/products';
 import categoriesRouter from '../server/src/routes/categories';
@@ -53,6 +53,27 @@ export default async function handler(req: express.Request, res: express.Respons
   }
 
   req.url = `/api/${route.replace(/^\/+/, '')}${forwardedParams.size ? `?${forwardedParams.toString()}` : ''}`;
+
+  // Keep a lightweight liveness check independent of database availability.
+  const routePath = req.url.split('?')[0];
+  if (req.method === 'GET' && routePath === '/api/health') {
+    return res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  }
+
+  // Explicit database check for production troubleshooting.
+  if (req.method === 'GET' && routePath === '/api/health/db') {
+    try {
+      await query('SELECT 1 AS ok');
+      return res.status(200).json({
+        status: 'ok',
+        database: 'connected',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      console.error('[Vercel DB Health Check Error]', err);
+      return res.status(503).json({ status: 'error', database: 'unavailable' });
+    }
+  }
 
   if (!dbInitialized) {
     try {
