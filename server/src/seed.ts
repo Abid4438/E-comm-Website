@@ -1,7 +1,7 @@
-import { query } from './db';
-import { INITIAL_CATEGORIES } from '../../src/data/categoriesData';
-import { INITIAL_PRODUCTS } from '../../src/data/productsData';
-import { INITIAL_CUSTOMERS, INITIAL_ORDERS, INITIAL_DISCOUNTS, INITIAL_REVIEWS } from '../../src/data/mockData';
+import { query } from './db.js';
+import { INITIAL_CATEGORIES } from '../../src/data/categoriesData.js';
+import { INITIAL_PRODUCTS } from '../../src/data/productsData.js';
+import { INITIAL_CUSTOMERS, INITIAL_ORDERS, INITIAL_DISCOUNTS, INITIAL_REVIEWS } from '../../src/data/mockData.js';
 
 export async function seedDatabase() {
   try {

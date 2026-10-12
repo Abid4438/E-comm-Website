@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { query } from '../db';
+import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 function generateToken(): string { return crypto.randomBytes(32).toString('hex'); }

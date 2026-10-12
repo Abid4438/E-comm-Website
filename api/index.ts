@@ -1,14 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { initDB, query } from '../server/src/db';
-import { seedDatabase } from '../server/src/seed';
-import productsRouter from '../server/src/routes/products';
-import categoriesRouter from '../server/src/routes/categories';
-import customersRouter from '../server/src/routes/customers';
-import ordersRouter from '../server/src/routes/orders';
-import discountsRouter from '../server/src/routes/discounts';
-import reviewsRouter from '../server/src/routes/reviews';
+import { initDB, query } from '../server/src/db.js';
+import { seedDatabase } from '../server/src/seed.js';
+import productsRouter from '../server/src/routes/products.js';
+import categoriesRouter from '../server/src/routes/categories.js';
+import customersRouter from '../server/src/routes/customers.js';
+import ordersRouter from '../server/src/routes/orders.js';
+import discountsRouter from '../server/src/routes/discounts.js';
+import reviewsRouter from '../server/src/routes/reviews.js';
 
 dotenv.config();
 
