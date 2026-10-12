@@ -40,7 +40,12 @@ export default async function handler(req: express.Request, res: express.Respons
   // Vercel rewrites /api/* to this function and passes the original route in ?path=.
   // Restore the expected Express URL before dispatching the request.
   const query = req.query as Record<string, unknown>;
-  const route = typeof query.path === 'string' ? query.path : '';
+  const routeValue = query.path;
+  const route = Array.isArray(routeValue)
+    ? routeValue.map(String).join('/')
+    : typeof routeValue === 'string'
+      ? routeValue
+      : '';
   const forwardedParams = new URLSearchParams();
 
   for (const [key, value] of Object.entries(query)) {
