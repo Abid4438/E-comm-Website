@@ -20,8 +20,15 @@ export async function getDBClient() {
     return { pool, pglite, isPgLite };
   }
 
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
-  const databaseUrl = process.env.DATABASE_URL;
+  const isVercel = process.env.VERCEL === '1';
+  const isProduction = process.env.NODE_ENV === 'production' || isVercel;
+
+  // The Neon integration currently provides DATABASE_URL_UNPOOLED for Production.
+  // Prefer it on Vercel so a stale manually-created DATABASE_URL (for example localhost)
+  // cannot override the hosted Neon database. Locally, keep DATABASE_URL first.
+  const databaseUrl = isVercel
+    ? (process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL)
+    : (process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED || 'postgresql://postgres:postgres@localhost:5432/moss');
 
   if (isProduction && !databaseUrl) {
     throw new Error('DATABASE_URL is required in production. Configure it in Vercel Project Settings > Environment Variables.');
@@ -30,7 +37,7 @@ export async function getDBClient() {
   try {
     const testPool = new Pool({
       connectionString: databaseUrl,
-      connectionTimeoutMillis: 1500,
+      connectionTimeoutMillis: 10000,
     });
     // Test connection with a quick query
     const client = await testPool.connect();
