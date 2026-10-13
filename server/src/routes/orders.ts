@@ -161,6 +161,52 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { checkoutData, items, totals } = req.body;
+    if (!checkoutData || typeof checkoutData !== 'object' || !Array.isArray(items) || items.length === 0 || items.length > 100 || !totals) {
+      return res.status(400).json({ error: 'Checkout details and at least one item are required.' });
+    }
+    let verifiedSubtotal = 0;
+    const verifiedItems: any[] = [];
+    for (const item of items) {
+      const productId = item?.product?.id;
+      const quantity = Number(item?.quantity);
+      if (typeof productId !== 'string' || !productId || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+        return res.status(400).json({ error: 'Invalid product or quantity in checkout.' });
+      }
+      const productResult = await query('SELECT id, name, price, stock, images FROM products WHERE id = $1 AND LOWER(status) = $2', [productId, 'active']);
+      if (!productResult.rows.length) return res.status(400).json({ error: 'A selected product is unavailable.' });
+      const product = productResult.rows[0];
+      if (Number(product.stock) < quantity) return res.status(409).json({ error: 'Insufficient stock for ' + product.name + '.' });
+      const unitPrice = Number(product.price);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) return res.status(400).json({ error: 'Invalid product pricing.' });
+      verifiedSubtotal += unitPrice * quantity;
+      verifiedItems.push({ ...item, product: { ...item.product, id: product.id, name: product.name, price: unitPrice, images: product.images } });
+    }
+    const requestedShipping = Number(totals.shipping);
+    const requestedTax = Number(totals.tax);
+    if (!Number.isFinite(requestedShipping) || requestedShipping < 0 || requestedShipping > 100 ||
+        !Number.isFinite(requestedTax) || requestedTax < 0 || requestedTax > verifiedSubtotal * 0.2) {
+      return res.status(400).json({ error: 'Invalid shipping or tax amount.' });
+    }
+    let verifiedDiscount = 0;
+    const cleanDiscountCode = typeof checkoutData.discountCode === 'string' ? checkoutData.discountCode.trim().toUpperCase() : '';
+    if (cleanDiscountCode) {
+      const discountResult = await query('SELECT * FROM discounts WHERE UPPER(code) = $1', [cleanDiscountCode]);
+      if (!discountResult.rows.length) return res.status(400).json({ error: 'Invalid discount code.' });
+      const d = discountResult.rows[0];
+      if (!d.is_active || new Date(d.expires_at).getTime() < Date.now() ||
+          (d.max_uses != null && Number(d.usage_count) >= Number(d.max_uses)) ||
+          (d.min_spend != null && verifiedSubtotal < Number(d.min_spend))) {
+        return res.status(400).json({ error: 'Discount code is no longer eligible.' });
+      }
+      verifiedDiscount = Math.round(verifiedSubtotal * Math.min(100, Math.max(0, Number(d.percentage))) / 100 * 100) / 100;
+    }
+    const verifiedTotals = {
+      subtotal: Math.round(verifiedSubtotal * 100) / 100,
+      shipping: Math.round(requestedShipping * 100) / 100,
+      tax: Math.round(requestedTax * 100) / 100,
+      discount: verifiedDiscount,
+      total: Math.max(0, Math.round((verifiedSubtotal + requestedShipping + requestedTax - verifiedDiscount) * 100) / 100),
+    };
     let authenticatedCustomerId: string | null = null;
     const authorization = req.headers.authorization;
     if (authorization?.startsWith('Bearer ')) {
@@ -234,16 +280,16 @@ router.post('/', async (req, res) => {
         JSON.stringify(customerInfo),
         JSON.stringify(shippingAddress),
         null,
-        JSON.stringify(items || []),
-        totals.subtotal,
-        totals.shipping,
-        totals.tax,
-        totals.discount || 0,
-        checkoutData.discountCode || null,
-        totals.total,
+        JSON.stringify(verifiedItems),
+        verifiedTotals.subtotal,
+        verifiedTotals.shipping,
+        verifiedTotals.tax,
+        verifiedTotals.discount,
+        cleanDiscountCode || null,
+        verifiedTotals.total,
         'Processing',
         paymentMethod,
-        'Paid',
+        'Pending',
         deliveryMethod,
         trackingNumber,
         carrier,
@@ -262,10 +308,10 @@ router.post('/', async (req, res) => {
     }
 
     // Update stock for purchased products
-    if (Array.isArray(items)) {
-      for (const item of items) {
+    if (Array.isArray(verifiedItems)) {
+      for (const item of verifiedItems) {
         if (item.product?.id) {
-          await query(`UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2`, [item.quantity || 1, item.product.id]);
+          await query(`UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1`, [item.quantity, item.product.id]);
         }
       }
     }
@@ -273,8 +319,8 @@ router.post('/', async (req, res) => {
     // Increment discount usage if discount code used
     if (checkoutData.discountCode) {
       await query(
-        `UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = UPPER($1)`,
-        [checkoutData.discountCode]
+        `UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = UPPER($1) AND is_active = TRUE AND expires_at >= CURRENT_TIMESTAMP AND (max_uses IS NULL OR usage_count < max_uses)`,
+        [cleanDiscountCode]
       );
     }
 
