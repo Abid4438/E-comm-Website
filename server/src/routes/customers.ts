@@ -138,7 +138,7 @@ router.post('/auth/register', async (req, res) => {
     const existing = await query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     let userId: string;
     if (existing.rows.length) {
-      if (existing.rows[0].email_verified) return res.status(409).json({ error: 'An account with this email already exists. Please sign in.' });
+      if (existing.rows[0].email_verified) return res.status(409).json({ code: 'ACCOUNT_ALREADY_EXISTS', error: 'An account with this email already exists. Please sign in.' });
       userId = existing.rows[0].id;
     } else {
       userId = 'cust-' + crypto.randomUUID();
@@ -159,9 +159,9 @@ router.post('/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || typeof email !== 'string' || !password || typeof password !== 'string') return res.status(400).json({ error: 'Enter your email and password.' });
     const result = await query('SELECT * FROM users WHERE LOWER(email) = $1', [email.trim().toLowerCase()]);
-    if (!result.rows.length) return res.status(401).json({ error: 'Invalid email or password.' });
+    if (!result.rows.length) return res.status(404).json({ code: 'ACCOUNT_NOT_FOUND', error: 'No account found for this email. Please create an account.' });
     const userRow = result.rows[0];
-    if (userRow.email_verified === false) return res.status(403).json({ error: 'Please verify your email before signing in.' });
+    if (userRow.email_verified === false) return res.status(403).json({ code: 'EMAIL_NOT_VERIFIED', error: 'Please verify your email before signing in.' });
     const saved = String(userRow.password || '');
     let valid = false;
     if (/^\$2[aby]\$/.test(saved)) valid = await bcrypt.compare(password, saved);
