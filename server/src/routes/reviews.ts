@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireAdmin } from '../security.js';
 
 const router = Router();
 
@@ -40,8 +41,9 @@ async function updateProductRatingStats(productId: string) {
 }
 
 // GET /api/reviews
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const result = await query(`SELECT * FROM reviews ORDER BY date DESC`);
     res.json(result.rows.map(formatReview));
   } catch (err: any) {
@@ -88,8 +90,8 @@ router.post('/', async (req, res) => {
         input.title,
         input.comment,
         date,
-        true,
-        'approved',
+        false,
+        'pending',
         0,
         JSON.stringify(input.images || []),
       ]
@@ -108,6 +110,7 @@ router.post('/', async (req, res) => {
 // PUT /api/reviews/:id/status
 router.put('/:id/status', async (req, res) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const { status } = req.body;
     const existing = await query(`SELECT * FROM reviews WHERE id = $1`, [req.params.id]);
     if (existing.rows.length === 0) {
