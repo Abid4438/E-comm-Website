@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import { getJwtSecret, requireAdmin as requireAdminGuard, requireUserOrAdmin } from '../security.js';
 
 const router = Router();
-const JWT_SECRET = getJwtSecret();
 
 async function saveCheckoutCustomerDetails(customerId: string, checkoutData: any) {
   const firstName = String(checkoutData.firstName || '').trim();
@@ -218,7 +217,7 @@ router.post('/', async (req, res) => {
     const authorization = req.headers.authorization;
     if (authorization?.startsWith('Bearer ')) {
       try {
-        const claims = jwt.verify(authorization.slice(7), JWT_SECRET) as any;
+        const claims = jwt.verify(authorization.slice(7), getJwtSecret()) as any;
         authenticatedCustomerId = String(claims.id || '');
         if (!authenticatedCustomerId) return res.status(401).json({ error: 'Invalid customer session.' });
       } catch {
