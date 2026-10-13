@@ -26,6 +26,31 @@ async function sendEmail(to: string, subject: string, pin: string, purpose: 'ver
     throw new Error('Could not send email. Please try again shortly.');
   }
 }
+async function sendWelcomeEmail(to: string, requiresVerification = false) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || process.env.EMAIL_FROM;
+  if (!apiKey || !from) throw new Error('Email service is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel.');
+  const message = requiresVerification
+    ? 'Thank you for creating a MOSS account. For your security, enter the six-digit verification code sent in a separate email. You can sign in after your email address is verified.'
+    : 'Your MOSS account is ready. You can sign in to explore our collection and manage your orders.';
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject: 'Welcome to MOSS',
+      text: 'Welcome to MOSS!\n\n' + message + '\n\nIf you did not create this account, please contact MOSS support.',
+      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#252820"><h2>Welcome to MOSS</h2><p>' + message + '</p><p>If you did not create this account, please contact MOSS support.</p><p>MOSS</p></div>'
+    })
+  });
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    console.error('[Resend welcome email error]', response.status, details.slice(0, 500));
+    throw new Error('Could not send welcome email.');
+  }
+}
+
 async function createAndSendPin(userId: string, email: string, purpose: 'verify' | 'reset') {
   const pin = generatePin();
   const tokenHash = hashToken(pin);
@@ -103,6 +128,7 @@ router.post('/auth/google', async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const existing = await query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     let userRow: any;
+    let isNewUser = false;
     if (existing.rows.length) {
       userRow = existing.rows[0];
       const updates: any[] = [true, 'Active', userRow.id];
@@ -118,6 +144,15 @@ router.post('/auth/google', async (req, res) => {
       await query("INSERT INTO users (id, email, password, first_name, last_name, phone, role, avatar, status, email_verified, registered_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,NOW())",
         [id, cleanEmail, await bcrypt.hash('google_' + (googleId || crypto.randomUUID()), 12), firstName || '', lastName || '', '', 'customer', avatar || null, 'Active']);
       userRow = (await query('SELECT * FROM users WHERE id = $1', [id])).rows[0];
+      isNewUser = true;
+    }
+    if (isNewUser) {
+      try {
+        await sendWelcomeEmail(cleanEmail);
+      } catch (emailError) {
+        // Email failure must not prevent a verified Google account from signing in.
+        console.error('[Google Welcome Email Error]', emailError);
+      }
     }
     const customer = await formatCustomer(userRow);
     const token = jwt.sign({ id: userRow.id, email: userRow.email, role: userRow.role }, JWT_SECRET, { expiresIn: '30d' });
@@ -137,6 +172,7 @@ router.post('/auth/register', async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const existing = await query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     let userId: string;
+    let isNewUser = false;
     if (existing.rows.length) {
       if (existing.rows[0].email_verified) return res.status(409).json({ code: 'ACCOUNT_ALREADY_EXISTS', error: 'An account with this email already exists. Please sign in.' });
       userId = existing.rows[0].id;
@@ -144,8 +180,17 @@ router.post('/auth/register', async (req, res) => {
       userId = 'cust-' + crypto.randomUUID();
       await query("INSERT INTO users (id,email,password,first_name,last_name,phone,role,status,email_verified,registered_at) VALUES ($1,$2,$3,$4,$5,$6,'customer','Pending',FALSE,NOW())",
         [userId, cleanEmail, await bcrypt.hash(password, 12), firstName || '', lastName || '', phone || '']);
+      isNewUser = true;
     }
     await createAndSendPin(userId, cleanEmail, 'verify');
+    if (isNewUser) {
+      try {
+        await sendWelcomeEmail(cleanEmail, true);
+      } catch (emailError) {
+        // Keep registration successful when the verification PIN was sent but the optional welcome email failed.
+        console.error('[Registration Welcome Email Error]', emailError);
+      }
+    }
     return res.status(201).json({ requiresVerification: true, email: cleanEmail, expiresIn: '10 minutes' });
   } catch (err: any) {
     console.error('[Registration Error]', err);
