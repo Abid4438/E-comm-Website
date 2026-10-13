@@ -91,7 +91,6 @@ async function createAndSendPin(userId: string, email: string, purpose: 'verify'
 
 
 const router = Router();
-const JWT_SECRET = getJwtSecret();
 
 function formatAddress(row: any) {
   if (!row) return null;
@@ -196,7 +195,7 @@ router.post('/auth/google', async (req, res) => {
       }
     }
     const customer = await formatCustomer(userRow);
-    const token = jwt.sign({ id: userRow.id, email: userRow.email, role: userRow.role }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: userRow.id, email: userRow.email, role: userRow.role }, getJwtSecret(), { expiresIn: '30d' });
     return res.json({ customer, token });
   } catch (err: any) {
     console.error('[Google Auth Error]', err);
@@ -272,7 +271,7 @@ router.post('/auth/login', async (req, res) => {
       console.error('[Login Order Link Error]', linkError);
     }
     const customer = await formatCustomer(userRow);
-    const token = jwt.sign({ id: userRow.id, email: userRow.email, role: userRow.role }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: userRow.id, email: userRow.email, role: userRow.role }, getJwtSecret(), { expiresIn: '30d' });
     return res.json({ customer, token });
   } catch (err: any) {
     console.error('[Login Error]', err);
@@ -293,7 +292,7 @@ router.get('/customers/me', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
 
     const result = await query(`SELECT * FROM users WHERE id = $1`, [decoded.id]);
     if (result.rows.length === 0) {
