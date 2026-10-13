@@ -15,6 +15,8 @@ import { createRateLimiter } from './rateLimit.js';
 dotenv.config();
 
 const app = express();
+// Vercel forwards the original client IP through one trusted proxy hop.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 app.use(cors({
