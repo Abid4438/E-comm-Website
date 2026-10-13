@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
@@ -9,9 +9,10 @@ import { isGoogleAuthEnabled } from '../../config/auth';
 import { ArrowRight, Shield } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [phone, setPhone] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [password, setPassword] = useState('');
@@ -37,12 +38,22 @@ export const RegisterPage: React.FC = () => {
       await registerUser({ email, firstName, lastName, phone, password });
       showToast({ title: 'Check Your Email', message: 'A 6-digit verification code has been sent to your email.', type: 'success' });
       navigate('/verify-email?email=' + encodeURIComponent(email));
-    } catch {
-      showToast({
-        title: 'Registration Error',
-        message: 'Could not create account.',
-        type: 'error',
-      });
+    } catch (error) {
+      const authError = error as Error & { code?: string };
+      if (authError.code === 'ACCOUNT_ALREADY_EXISTS') {
+        showToast({
+          title: 'Account Already Exists',
+          message: 'This email is already registered. Opening sign in.',
+          type: 'info',
+        });
+        navigate(`/login?email=${encodeURIComponent(email.trim())}`);
+      } else {
+        showToast({
+          title: 'Registration Error',
+          message: authError.message || 'Could not create account. Please try again.',
+          type: 'error',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
