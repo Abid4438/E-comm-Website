@@ -2,28 +2,10 @@ import { Router, Request, Response } from 'express';
 import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { getJwtSecret, requireAdmin as requireAdminGuard, requireUserOrAdmin } from '../security.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'moss-secret-jwt-key-2026';
-
-function requireAdmin(req: Request, res: Response): boolean {
-  const authorization = req.headers.authorization;
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Sign in as an administrator to access this resource.' });
-    return false;
-  }
-  try {
-    const claims = jwt.verify(authorization.slice(7), JWT_SECRET) as any;
-    if (claims.role !== 'admin') {
-      res.status(403).json({ error: 'Administrator access is required.' });
-      return false;
-    }
-    return true;
-  } catch {
-    res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
-    return false;
-  }
-}
+const JWT_SECRET = getJwtSecret();
 
 async function saveCheckoutCustomerDetails(customerId: string, checkoutData: any) {
   const firstName = String(checkoutData.firstName || '').trim();
@@ -114,7 +96,7 @@ function formatOrder(row: any) {
 // GET /api/orders
 router.get('/', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdminGuard(req, res))) return;
     const result = await query(`SELECT * FROM orders ORDER BY date DESC`);
     res.json(result.rows.map(formatOrder));
   } catch (err: any) {
@@ -166,9 +148,12 @@ router.get('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    res.json(formatOrder(result.rows[0]));
+    const order = result.rows[0];
+    if (!(await requireUserOrAdmin(req, res, String(order.customer_id || '')))) return;
+    res.json(formatOrder(order));
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Order Detail Error]', err);
+    res.status(500).json({ error: 'Could not load order.' });
   }
 });
 
