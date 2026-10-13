@@ -313,7 +313,8 @@ router.post('/', async (req, res) => {
     const created = await query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     res.status(201).json(formatOrder(created.rows[0]));
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Order Checkout Error]', err);
+    res.status(500).json({ error: 'Could not create order. Please try again.' });
   }
 });
 
@@ -322,6 +323,16 @@ router.put('/:id/status', async (req, res) => {
   try {
     if (!(await requireAdminGuard(req, res))) return;
     const { status, trackingNumber, carrier } = req.body;
+    const allowedStatuses = new Set(['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']);
+    if (status !== undefined && (typeof status !== 'string' || !allowedStatuses.has(status))) {
+      return res.status(400).json({ error: 'Invalid order status.' });
+    }
+    if (trackingNumber !== undefined && (typeof trackingNumber !== 'string' || trackingNumber.length > 120)) {
+      return res.status(400).json({ error: 'Invalid tracking number.' });
+    }
+    if (carrier !== undefined && (typeof carrier !== 'string' || carrier.length > 120)) {
+      return res.status(400).json({ error: 'Invalid carrier.' });
+    }
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
