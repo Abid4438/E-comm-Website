@@ -152,16 +152,25 @@ router.post('/', async (req, res) => {
     }
     let verifiedSubtotal = 0;
     const verifiedItems: any[] = [];
+    const requestedQuantities = new Map<string, number>();
     for (const item of items) {
       const productId = item?.product?.id;
       const quantity = Number(item?.quantity);
       if (typeof productId !== 'string' || !productId || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
         return res.status(400).json({ error: 'Invalid product or quantity in checkout.' });
       }
+      requestedQuantities.set(productId, (requestedQuantities.get(productId) || 0) + quantity);
+    }
+    if ([...requestedQuantities.values()].some((quantity) => quantity > 100)) {
+      return res.status(400).json({ error: 'Combined quantity for a product cannot exceed 100.' });
+    }
+    for (const item of items) {
+      const productId = item.product.id as string;
+      const quantity = Number(item.quantity);
       const productResult = await query('SELECT id, name, price, stock, images FROM products WHERE id = $1 AND LOWER(status) = $2', [productId, 'active']);
       if (!productResult.rows.length) return res.status(400).json({ error: 'A selected product is unavailable.' });
       const product = productResult.rows[0];
-      if (Number(product.stock) < quantity) return res.status(409).json({ error: 'Insufficient stock for ' + product.name + '.' });
+      if (Number(product.stock) < (requestedQuantities.get(productId) || quantity)) return res.status(409).json({ error: 'Insufficient stock for ' + product.name + '.' });
       const unitPrice = Number(product.price);
       if (!Number.isFinite(unitPrice) || unitPrice < 0) return res.status(400).json({ error: 'Invalid product pricing.' });
       verifiedSubtotal += unitPrice * quantity;
