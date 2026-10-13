@@ -167,11 +167,10 @@ router.post('/', async (req, res) => {
       verifiedSubtotal += unitPrice * quantity;
       verifiedItems.push({ ...item, product: { ...item.product, id: product.id, name: product.name, price: unitPrice, images: product.images } });
     }
-    const requestedShipping = Number(totals.shipping);
-    const requestedTax = Number(totals.tax);
-    if (!Number.isFinite(requestedShipping) || requestedShipping < 0 || requestedShipping > 100 ||
-        !Number.isFinite(requestedTax) || requestedTax < 0 || requestedTax > verifiedSubtotal * 0.2) {
-      return res.status(400).json({ error: 'Invalid shipping or tax amount.' });
+    // Prices and fees are calculated on the server. Never trust client-supplied totals.
+    const deliveryMethod = checkoutData.deliveryMethod;
+    if (!['standard', 'express', 'overnight'].includes(deliveryMethod)) {
+      return res.status(400).json({ error: 'Invalid delivery method.' });
     }
     let verifiedDiscount = 0;
     const cleanDiscountCode = typeof checkoutData.discountCode === 'string' ? checkoutData.discountCode.trim().toUpperCase() : '';
@@ -184,14 +183,27 @@ router.post('/', async (req, res) => {
           (d.min_spend != null && verifiedSubtotal < Number(d.min_spend))) {
         return res.status(400).json({ error: 'Discount code is no longer eligible.' });
       }
-      verifiedDiscount = Math.round(verifiedSubtotal * Math.min(100, Math.max(0, Number(d.percentage))) / 100 * 100) / 100;
+      const percentage = Number(d.percentage);
+      if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
+        return res.status(400).json({ error: 'Discount configuration is invalid.' });
+      }
+      // The storefront treats 100% codes as free-shipping codes, not free merchandise.
+      verifiedDiscount = percentage >= 100 ? 0 : Math.round(verifiedSubtotal * percentage) / 100;
     }
+    const subtotalRounded = Math.round(verifiedSubtotal * 100) / 100;
+    const freeShipping = cleanDiscountCode === 'FREESHIP' || (deliveryMethod === 'standard' && subtotalRounded >= 28000);
+    const shippingFee = cleanDiscountCode === 'FREESHIP' ? 0 :
+      deliveryMethod === 'express' ? 7000 :
+      deliveryMethod === 'overnight' ? 11200 :
+      freeShipping ? 0 : 3360;
+    const taxableAmount = Math.max(0, subtotalRounded - verifiedDiscount);
+    const taxAmount = Math.round(taxableAmount * 0.18 * 100) / 100;
     const verifiedTotals = {
-      subtotal: Math.round(verifiedSubtotal * 100) / 100,
-      shipping: Math.round(requestedShipping * 100) / 100,
-      tax: Math.round(requestedTax * 100) / 100,
+      subtotal: subtotalRounded,
+      shipping: shippingFee,
+      tax: taxAmount,
       discount: verifiedDiscount,
-      total: Math.max(0, Math.round((verifiedSubtotal + requestedShipping + requestedTax - verifiedDiscount) * 100) / 100),
+      total: Math.max(0, Math.round((subtotalRounded + shippingFee + taxAmount - verifiedDiscount) * 100) / 100),
     };
     let authenticatedCustomerId: string | null = null;
     const authorization = req.headers.authorization;
