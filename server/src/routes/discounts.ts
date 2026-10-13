@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireAdmin } from '../security.js';
 
 const router = Router();
 
@@ -81,6 +82,7 @@ router.post('/apply', async (req, res) => {
 // POST /api/discounts (Create)
 router.post('/', async (req, res) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const d = req.body;
     const id = `disc-${Date.now()}`;
     await query(
@@ -108,6 +110,7 @@ router.post('/', async (req, res) => {
 // PUT /api/discounts/:id (Update)
 router.put('/:id', async (req, res) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const id = req.params.id;
     const d = req.body;
     const existing = await query(`SELECT * FROM discounts WHERE id = $1`, [id]);
@@ -143,6 +146,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/discounts/:id (Delete)
 router.delete('/:id', async (req, res) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const result = await query(`DELETE FROM discounts WHERE id = $1`, [req.params.id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Discount not found' });
