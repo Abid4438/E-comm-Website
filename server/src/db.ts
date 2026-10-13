@@ -26,8 +26,10 @@ export async function getDBClient() {
   // The Neon integration currently provides DATABASE_URL_UNPOOLED for Production.
   // Prefer it on Vercel so a stale manually-created DATABASE_URL (for example localhost)
   // cannot override the hosted Neon database. Locally, keep DATABASE_URL first.
-  const databaseUrl = isVercel
-    ? (process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL)
+  const databaseUrl = isProduction
+    ? (isVercel
+        ? (process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL)
+        : (process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED))
     : (process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED || 'postgresql://postgres:postgres@localhost:5432/moss');
 
   if (isProduction && !databaseUrl) {

@@ -2,28 +2,10 @@ import { Router, Request, Response } from 'express';
 import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { getJwtSecret, requireAdmin as requireAdminGuard, requireUserOrAdmin } from '../security.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'moss-secret-jwt-key-2026';
-
-function requireAdmin(req: Request, res: Response): boolean {
-  const authorization = req.headers.authorization;
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Sign in as an administrator to access this resource.' });
-    return false;
-  }
-  try {
-    const claims = jwt.verify(authorization.slice(7), JWT_SECRET) as any;
-    if (claims.role !== 'admin') {
-      res.status(403).json({ error: 'Administrator access is required.' });
-      return false;
-    }
-    return true;
-  } catch {
-    res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
-    return false;
-  }
-}
+const JWT_SECRET = getJwtSecret();
 
 async function saveCheckoutCustomerDetails(customerId: string, checkoutData: any) {
   const firstName = String(checkoutData.firstName || '').trim();
@@ -114,7 +96,7 @@ function formatOrder(row: any) {
 // GET /api/orders
 router.get('/', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdminGuard(req, res))) return;
     const result = await query(`SELECT * FROM orders ORDER BY date DESC`);
     res.json(result.rows.map(formatOrder));
   } catch (err: any) {
@@ -125,22 +107,8 @@ router.get('/', async (req, res) => {
 // GET /api/orders/customer/:customerId
 router.get('/customer/:customerId', async (req, res) => {
   try {
-    const authorization = req.headers.authorization;
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Sign in to view customer orders.' });
-    }
-
-    let claims: any;
-    try {
-      claims = jwt.verify(authorization.slice(7), JWT_SECRET) as any;
-    } catch {
-      return res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
-    }
-
     const cid = req.params.customerId;
-    if (String(claims.id) !== cid && claims.role !== 'admin') {
-      return res.status(403).json({ error: 'You can only view your own orders.' });
-    }
+    if (!(await requireUserOrAdmin(req, res, cid))) return;
 
     const customerRes = await query('SELECT id, email FROM users WHERE id = $1', [cid]);
     if (!customerRes.rows.length) return res.status(404).json({ error: 'Customer not found.' });
@@ -166,9 +134,12 @@ router.get('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    res.json(formatOrder(result.rows[0]));
+    const order = result.rows[0];
+    if (!(await requireUserOrAdmin(req, res, String(order.customer_id || '')))) return;
+    res.json(formatOrder(order));
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Order Detail Error]', err);
+    res.status(500).json({ error: 'Could not load order.' });
   }
 });
 
@@ -176,6 +147,73 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { checkoutData, items, totals } = req.body;
+    if (!checkoutData || typeof checkoutData !== 'object' || !Array.isArray(items) || items.length === 0 || items.length > 100 || !totals) {
+      return res.status(400).json({ error: 'Checkout details and at least one item are required.' });
+    }
+    let verifiedSubtotal = 0;
+    const verifiedItems: any[] = [];
+    const requestedQuantities = new Map<string, number>();
+    for (const item of items) {
+      const productId = item?.product?.id;
+      const quantity = Number(item?.quantity);
+      if (typeof productId !== 'string' || !productId || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+        return res.status(400).json({ error: 'Invalid product or quantity in checkout.' });
+      }
+      requestedQuantities.set(productId, (requestedQuantities.get(productId) || 0) + quantity);
+    }
+    if ([...requestedQuantities.values()].some((quantity) => quantity > 100)) {
+      return res.status(400).json({ error: 'Combined quantity for a product cannot exceed 100.' });
+    }
+    for (const item of items) {
+      const productId = item.product.id as string;
+      const quantity = Number(item.quantity);
+      const productResult = await query('SELECT id, name, price, stock, images FROM products WHERE id = $1 AND LOWER(status) = $2', [productId, 'active']);
+      if (!productResult.rows.length) return res.status(400).json({ error: 'A selected product is unavailable.' });
+      const product = productResult.rows[0];
+      if (Number(product.stock) < (requestedQuantities.get(productId) || quantity)) return res.status(409).json({ error: 'Insufficient stock for ' + product.name + '.' });
+      const unitPrice = Number(product.price);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) return res.status(400).json({ error: 'Invalid product pricing.' });
+      verifiedSubtotal += unitPrice * quantity;
+      verifiedItems.push({ ...item, product: { ...item.product, id: product.id, name: product.name, price: unitPrice, images: product.images } });
+    }
+    // Prices and fees are calculated on the server. Never trust client-supplied totals.
+    const deliveryMethod = checkoutData.deliveryMethod;
+    if (!['standard', 'express', 'overnight'].includes(deliveryMethod)) {
+      return res.status(400).json({ error: 'Invalid delivery method.' });
+    }
+    let verifiedDiscount = 0;
+    const cleanDiscountCode = typeof checkoutData.discountCode === 'string' ? checkoutData.discountCode.trim().toUpperCase() : '';
+    if (cleanDiscountCode) {
+      const discountResult = await query('SELECT * FROM discounts WHERE UPPER(code) = $1', [cleanDiscountCode]);
+      if (!discountResult.rows.length) return res.status(400).json({ error: 'Invalid discount code.' });
+      const d = discountResult.rows[0];
+      if (!d.is_active || new Date(d.expires_at).getTime() < Date.now() ||
+          (d.max_uses != null && Number(d.usage_count) >= Number(d.max_uses)) ||
+          (d.min_spend != null && verifiedSubtotal < Number(d.min_spend))) {
+        return res.status(400).json({ error: 'Discount code is no longer eligible.' });
+      }
+      const percentage = Number(d.percentage);
+      if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
+        return res.status(400).json({ error: 'Discount configuration is invalid.' });
+      }
+      // The storefront treats 100% codes as free-shipping codes, not free merchandise.
+      verifiedDiscount = percentage >= 100 ? 0 : Math.round(verifiedSubtotal * percentage) / 100;
+    }
+    const subtotalRounded = Math.round(verifiedSubtotal * 100) / 100;
+    const freeShipping = cleanDiscountCode === 'FREESHIP' || (deliveryMethod === 'standard' && subtotalRounded >= 28000);
+    const shippingFee = cleanDiscountCode === 'FREESHIP' ? 0 :
+      deliveryMethod === 'express' ? 7000 :
+      deliveryMethod === 'overnight' ? 11200 :
+      freeShipping ? 0 : 3360;
+    const taxableAmount = Math.max(0, subtotalRounded - verifiedDiscount);
+    const taxAmount = Math.round(taxableAmount * 0.18 * 100) / 100;
+    const verifiedTotals = {
+      subtotal: subtotalRounded,
+      shipping: shippingFee,
+      tax: taxAmount,
+      discount: verifiedDiscount,
+      total: Math.max(0, Math.round((subtotalRounded + shippingFee + taxAmount - verifiedDiscount) * 100) / 100),
+    };
     let authenticatedCustomerId: string | null = null;
     const authorization = req.headers.authorization;
     if (authorization?.startsWith('Bearer ')) {
@@ -249,16 +287,16 @@ router.post('/', async (req, res) => {
         JSON.stringify(customerInfo),
         JSON.stringify(shippingAddress),
         null,
-        JSON.stringify(items || []),
-        totals.subtotal,
-        totals.shipping,
-        totals.tax,
-        totals.discount || 0,
-        checkoutData.discountCode || null,
-        totals.total,
+        JSON.stringify(verifiedItems),
+        verifiedTotals.subtotal,
+        verifiedTotals.shipping,
+        verifiedTotals.tax,
+        verifiedTotals.discount,
+        cleanDiscountCode || null,
+        verifiedTotals.total,
         'Processing',
         paymentMethod,
-        'Paid',
+        'Pending',
         deliveryMethod,
         trackingNumber,
         carrier,
@@ -277,10 +315,10 @@ router.post('/', async (req, res) => {
     }
 
     // Update stock for purchased products
-    if (Array.isArray(items)) {
-      for (const item of items) {
+    if (Array.isArray(verifiedItems)) {
+      for (const item of verifiedItems) {
         if (item.product?.id) {
-          await query(`UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2`, [item.quantity || 1, item.product.id]);
+          await query(`UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1`, [item.quantity, item.product.id]);
         }
       }
     }
@@ -288,23 +326,34 @@ router.post('/', async (req, res) => {
     // Increment discount usage if discount code used
     if (checkoutData.discountCode) {
       await query(
-        `UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = UPPER($1)`,
-        [checkoutData.discountCode]
+        `UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = UPPER($1) AND is_active = TRUE AND expires_at >= CURRENT_TIMESTAMP AND (max_uses IS NULL OR usage_count < max_uses)`,
+        [cleanDiscountCode]
       );
     }
 
     const created = await query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     res.status(201).json(formatOrder(created.rows[0]));
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Order Checkout Error]', err);
+    res.status(500).json({ error: 'Could not create order. Please try again.' });
   }
 });
 
 // PUT /api/orders/:id/status
 router.put('/:id/status', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdminGuard(req, res))) return;
     const { status, trackingNumber, carrier } = req.body;
+    const allowedStatuses = new Set(['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']);
+    if (status !== undefined && (typeof status !== 'string' || !allowedStatuses.has(status))) {
+      return res.status(400).json({ error: 'Invalid order status.' });
+    }
+    if (trackingNumber !== undefined && (typeof trackingNumber !== 'string' || trackingNumber.length > 120)) {
+      return res.status(400).json({ error: 'Invalid tracking number.' });
+    }
+    if (carrier !== undefined && (typeof carrier !== 'string' || carrier.length > 120)) {
+      return res.status(400).json({ error: 'Invalid carrier.' });
+    }
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
@@ -333,7 +382,7 @@ router.put('/:id/status', async (req, res) => {
 // PUT /api/orders/:id/cancel
 router.put('/:id/cancel', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdminGuard(req, res))) return;
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });

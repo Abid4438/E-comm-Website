@@ -3,6 +3,7 @@ import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { getJwtSecret, requireAdmin, requireUserOrAdmin } from '../security.js';
 class EmailConfigurationError extends Error {
   constructor() {
     super('Email service is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel.');
@@ -90,7 +91,7 @@ async function createAndSendPin(userId: string, email: string, purpose: 'verify'
 
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'moss-secret-jwt-key-2026';
+const JWT_SECRET = getJwtSecret();
 
 function formatAddress(row: any) {
   if (!row) return null;
@@ -145,8 +146,21 @@ async function formatCustomer(row: any) {
 // Google sign-in verifies the email identity provided by the trusted Google OAuth client.
 router.post('/auth/google', async (req, res) => {
   try {
-    const { email, firstName, lastName, avatar, googleId } = req.body;
-    if (!email || typeof email !== 'string') return res.status(400).json({ error: 'Email is required for Google Sign-In' });
+    const { idToken, credential, firstName, lastName, avatar } = req.body;
+    const googleToken = typeof idToken === 'string' ? idToken : typeof credential === 'string' ? credential : '';
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+    if (!googleToken || !clientId) return res.status(401).json({ error: 'Google sign-in is not configured. Please use a verified Google ID token.' });
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(googleToken));
+    if (!tokenResponse.ok) return res.status(401).json({ error: 'Invalid Google credential.' });
+    const googleClaims = await tokenResponse.json() as { aud?: string; email?: string; email_verified?: string | boolean; sub?: string; given_name?: string; family_name?: string; picture?: string };
+    if (googleClaims.aud !== clientId || !googleClaims.sub || !googleClaims.email || String(googleClaims.email_verified) !== 'true') {
+      return res.status(401).json({ error: 'Google account verification failed.' });
+    }
+    const email = googleClaims.email;
+    const googleId = googleClaims.sub;
+    const safeFirstName = firstName || googleClaims.given_name || '';
+    const safeLastName = lastName || googleClaims.family_name || '';
+    const safeAvatar = avatar || googleClaims.picture || '';
     const cleanEmail = email.trim().toLowerCase();
     const existing = await query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     let userRow: any;
@@ -155,16 +169,16 @@ router.post('/auth/google', async (req, res) => {
       userRow = existing.rows[0];
       const updates: any[] = [true, 'Active', userRow.id];
       const setParts = ['email_verified = $1', 'status = $2'];
-      if (avatar && !userRow.avatar) { updates.splice(2, 0, avatar); setParts.splice(2, 0, 'avatar = $3'); }
-      if (firstName && !userRow.first_name) { updates.splice(updates.length - 1, 0, firstName); setParts.splice(setParts.length - 1, 0, 'first_name = $' + (updates.length - 1)); }
-      if (lastName && !userRow.last_name) { updates.splice(updates.length - 1, 0, lastName); setParts.splice(setParts.length - 1, 0, 'last_name = $' + (updates.length - 1)); }
+      if (safeAvatar && !userRow.avatar) { updates.splice(2, 0, safeAvatar); setParts.splice(2, 0, 'avatar = $3'); }
+      if (safeFirstName && !userRow.first_name) { updates.splice(updates.length - 1, 0, safeFirstName); setParts.splice(setParts.length - 1, 0, 'first_name = $' + (updates.length - 1)); }
+      if (safeLastName && !userRow.last_name) { updates.splice(updates.length - 1, 0, safeLastName); setParts.splice(setParts.length - 1, 0, 'last_name = $' + (updates.length - 1)); }
       updates[updates.length - 1] = userRow.id;
       await query('UPDATE users SET ' + setParts.join(', ') + ' WHERE id = $' + updates.length, updates);
       userRow = (await query('SELECT * FROM users WHERE id = $1', [userRow.id])).rows[0];
     } else {
       const id = 'cust-' + crypto.randomUUID();
       await query("INSERT INTO users (id, email, password, first_name, last_name, phone, role, avatar, status, email_verified, registered_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,NOW())",
-        [id, cleanEmail, await bcrypt.hash('google_' + (googleId || crypto.randomUUID()), 12), firstName || '', lastName || '', '', 'customer', avatar || null, 'Active']);
+        [id, cleanEmail, await bcrypt.hash('google_' + (googleId || crypto.randomUUID()), 12), safeFirstName, safeLastName, '', 'customer', safeAvatar || null, 'Active']);
       userRow = (await query('SELECT * FROM users WHERE id = $1', [id])).rows[0];
       isNewUser = true;
     }
@@ -293,8 +307,9 @@ router.get('/customers/me', async (req, res) => {
 });
 
 // GET /api/customers (Admin list)
-router.get('/customers', async (_req, res) => {
+router.get('/customers', async (req, res) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const result = await query(`SELECT * FROM users ORDER BY registered_at DESC`);
     const customers = await Promise.all(result.rows.map(formatCustomer));
     res.json(customers);
@@ -306,6 +321,7 @@ router.get('/customers', async (_req, res) => {
 // GET /api/customers/:id
 router.get('/customers/:id', async (req, res) => {
   try {
+    if (!(await requireUserOrAdmin(req, res, req.params.id))) return;
     const result = await query(`SELECT * FROM users WHERE id = $1`, [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -322,6 +338,8 @@ router.put('/customers/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const u = req.body;
+    if (!(await requireUserOrAdmin(req, res, id))) return;
+    if ((u.role !== undefined || u.status !== undefined) && !(await requireAdmin(req, res))) return;
     const existing = await query(`SELECT * FROM users WHERE id = $1`, [id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -357,6 +375,7 @@ router.put('/customers/:id', async (req, res) => {
 router.post('/customers/:id/addresses', async (req, res) => {
   try {
     const customerId = req.params.id;
+    if (!(await requireUserOrAdmin(req, res, customerId))) return;
     const a = req.body;
     const addrId = 'addr-' + crypto.randomUUID();
 
@@ -401,6 +420,7 @@ router.post('/customers/:id/addresses', async (req, res) => {
 router.put('/customers/:id/addresses/:addressId', async (req, res) => {
   try {
     const { id: customerId, addressId } = req.params;
+    if (!(await requireUserOrAdmin(req, res, customerId))) return;
     const a = req.body;
 
     const existing = await query(`SELECT * FROM addresses WHERE id = $1 AND user_id = $2`, [addressId, customerId]);
@@ -448,6 +468,7 @@ router.put('/customers/:id/addresses/:addressId', async (req, res) => {
 router.delete('/customers/:id/addresses/:addressId', async (req, res) => {
   try {
     const { id: customerId, addressId } = req.params;
+    if (!(await requireUserOrAdmin(req, res, customerId))) return;
     const result = await query(`DELETE FROM addresses WHERE id = $1 AND user_id = $2`, [addressId, customerId]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Address not found' });

@@ -59,6 +59,9 @@ export async function seedDatabase() {
       );
     }
 
+    // Never seed mock customer credentials, orders, discounts, or reviews into production.
+    // Production seed runs only create catalogue categories and products.
+    if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
     // 3. Seed Users & Addresses
     for (const u of INITIAL_CUSTOMERS) {
       await query(
@@ -194,8 +197,11 @@ export async function seedDatabase() {
       );
     }
 
+    }
+
     console.log('[Seed] Database initialization and seed completed.');
   } catch (error) {
     console.error('[Seed] Error seeding database:', error);
+    throw error;
   }
 }
