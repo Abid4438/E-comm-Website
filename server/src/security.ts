@@ -25,7 +25,7 @@ export async function getAuthenticatedUser(req: Request, res: Response) {
     }
     const result = await query('SELECT id, role, status FROM users WHERE id = $1', [claims.id]);
     const user = result.rows[0];
-    if (!user || String(user.status || '').toLowerCase() !== 'active') {
+    if (!user || ['inactive', 'disabled', 'suspended', 'deleted', 'blocked'].includes(String(user.status || '').toLowerCase())) {
       res.status(401).json({ error: 'Account is unavailable. Please sign in again.' });
       return null;
     }
