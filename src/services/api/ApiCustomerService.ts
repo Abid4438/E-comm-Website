@@ -55,7 +55,7 @@ export class ApiCustomerService implements ICustomerService {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Login failed' }));
-      throw new Error(err.error || 'Login failed');
+      throw Object.assign(new Error(err.error || 'Login failed'), { code: err.code });
     }
     const data = await res.json();
     if (data.token) {
@@ -90,7 +90,7 @@ export class ApiCustomerService implements ICustomerService {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Registration failed' }));
-      throw new Error(err.error || 'Registration failed');
+      throw Object.assign(new Error(err.error || 'Registration failed'), { code: err.code });
     }
     const resData = await res.json();
     if (resData.token) {
