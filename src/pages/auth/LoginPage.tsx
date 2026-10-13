@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { SEOHead } from '../../components/ui/SEOHead';
 import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
 import { isGoogleAuthEnabled } from '../../config/auth';
-import { User, ShieldCheck, ArrowRight, Shield } from 'lucide-react';
+import { ArrowRight, Shield } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -46,25 +46,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickDemo = async (demoEmail: string) => {
-    setEmail(demoEmail);
-    setIsLoading(true);
-    try {
-      const user = await login(demoEmail);
-      showToast({
-        title: 'Demo Sign In',
-        message: `Signed in as ${user.firstName} (${user.role}).`,
-        type: 'success',
-      });
-      navigate(user.role === 'admin' ? '/admin' : redirect);
-    } catch (err: any) {
-      console.error('[Demo Login Error]', err);
-      showToast({ title: 'Demo Error', message: err.message || 'Quick demo sign-in failed.', type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="max-w-lg mx-auto px-4 py-16 sm:py-24">
       <SEOHead title="Sign In | MOSS" description="Sign in to your MOSS customer account." />
@@ -97,29 +78,6 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Demo Fast Logins */}
-        <div className="mb-6 p-4 bg-sand-100 border border-sand-200 space-y-2">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-charcoal-600 block">
-            Instant Demo Sign In:
-          </span>
-          <div className="flex gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('elena.rostova@example.com')}
-              className="flex-1 px-3 py-2 bg-sand-200 hover:bg-sand-300 text-charcoal-900 text-xs font-medium border border-sand-300 transition-colors flex items-center gap-1.5"
-            >
-              <User className="w-3.5 h-3.5 text-charcoal-600" /> Customer Login
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('admin@moss.com')}
-              className="flex-1 px-3 py-2 bg-moss-900 hover:bg-moss-800 text-sand-50 text-xs font-medium transition-colors flex items-center gap-1.5"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-gold-500" /> Admin Login
-            </button>
-          </div>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
@@ -149,6 +107,7 @@ export const LoginPage: React.FC = () => {
             </div>
             <input
               type="password"
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"

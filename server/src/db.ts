@@ -104,6 +104,9 @@ export async function initDB() {
     )
   `);
 
+  // Existing users remain verified; new email signups explicitly set this to false.
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT TRUE`);
+
   // Create Addresses Table
   await query(`
     CREATE TABLE IF NOT EXISTS addresses (

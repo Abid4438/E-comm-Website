@@ -35,9 +35,7 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
     try {
       await registerUser({ email, firstName, lastName, phone, password });
-      const { sendVerificationEmail } = await import('../../services/apiClient');
-      await sendVerificationEmail(email);
-      showToast({ title: 'Account Created', message: 'Confirm email, then login.', type: 'success' });
+      showToast({ title: 'Check Your Email', message: 'A 6-digit verification code has been sent to your email.', type: 'success' });
       navigate('/verify-email?email=' + encodeURIComponent(email));
     } catch {
       showToast({
@@ -155,7 +153,8 @@ export const RegisterPage: React.FC = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="At least 8 characters"
+              minLength={8}
               className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
             />
           </div>
