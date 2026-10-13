@@ -67,18 +67,25 @@ router.post('/validate', async (req, res) => {
   }
 });
 
-// POST /api/discounts/apply (increment usage after apply)
+// Applying a code in the cart must not consume a use; count it only when an order is accepted.
 router.post('/apply', async (req, res) => {
   try {
-    const { code } = req.body;
-    if (!code) return res.status(400).json({ error: 'Code required' });
-    await query(`UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = $1`, [code.trim().toUpperCase()]);
-    res.json({ success: true });
+    const { code, currentSubtotal } = req.body;
+    if (typeof code !== 'string' || !code.trim()) return res.status(400).json({ error: 'Code required' });
+    const result = await query("SELECT * FROM discounts WHERE UPPER(code) = $1", [code.trim().toUpperCase()]);
+    if (!result.rows.length) return res.status(400).json({ success: false, error: 'Invalid promo code.' });
+    const d = result.rows[0];
+    if (!d.is_active || new Date(d.expires_at).getTime() < Date.now() ||
+        (d.max_uses != null && Number(d.usage_count) >= Number(d.max_uses)) ||
+        (Number(d.min_spend || 0) > 0 && Number(currentSubtotal) < Number(d.min_spend))) {
+      return res.status(400).json({ success: false, error: 'Promo code is not eligible.' });
+    }
+    res.json({ success: true, counted: false });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Discount Apply Error]', err);
+    res.status(500).json({ error: 'Could not validate promo code.' });
   }
 });
-
 // POST /api/discounts (Create)
 router.post('/', async (req, res) => {
   try {
