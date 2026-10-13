@@ -65,7 +65,7 @@ export async function seedDatabase() {
         `INSERT INTO users (
           id, email, password, first_name, last_name, phone, role, avatar, status, registered_at, default_address_id
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        ON CONFLICT (id) DO NOTHING`,
+        ON CONFLICT DO NOTHING`,
         [
           u.id,
           u.email,
@@ -81,7 +81,8 @@ export async function seedDatabase() {
         ]
       );
 
-      if (u.addresses && u.addresses.length > 0) {
+      const seededUserResult = await query('SELECT id FROM users WHERE id = $1', [u.id]);
+      if (seededUserResult.rows.length > 0 && u.addresses && u.addresses.length > 0) {
         for (const a of u.addresses) {
           await query(
             `INSERT INTO addresses (

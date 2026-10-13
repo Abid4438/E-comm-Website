@@ -3,12 +3,24 @@ import { query } from '../db.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+class EmailConfigurationError extends Error {
+  constructor() {
+    super('Email service is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel.');
+    this.name = 'EmailConfigurationError';
+  }
+}
+class EmailDeliveryError extends Error {
+  constructor(message = 'Could not send email. Please try again shortly.') {
+    super(message);
+    this.name = 'EmailDeliveryError';
+  }
+}
 function generatePin(): string { return String(crypto.randomInt(0, 1000000)).padStart(6, '0'); }
 function hashToken(token: string): string { return crypto.createHash('sha256').update(token).digest('hex'); }
 async function sendEmail(to: string, subject: string, pin: string, purpose: 'verify' | 'reset') {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || process.env.EMAIL_FROM;
-  if (!apiKey || !from) throw new Error('Email service is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel.');
+  const apiKey = (process.env.RESEND_API_KEY || process.env.RESEND_API_TOKEN || '').trim();
+  const from = (process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || process.env.EMAIL_FROM || process.env.EMAIL_FROM_ADDRESS || '').trim();
+  if (!apiKey || !from) throw new EmailConfigurationError();
   const heading = purpose === 'verify' ? 'Verify your MOSS email' : 'Reset your MOSS password';
   const explanation = purpose === 'verify' ? 'Enter this code on the MOSS website to verify your email address.' : 'Enter this code on the MOSS website to reset your password.';
   const response = await fetch('https://api.resend.com/emails', {
@@ -23,13 +35,13 @@ async function sendEmail(to: string, subject: string, pin: string, purpose: 'ver
   if (!response.ok) {
     const details = await response.text().catch(() => '');
     console.error('[Resend email error]', response.status, details.slice(0, 500));
-    throw new Error('Could not send email. Please try again shortly.');
+    throw new EmailDeliveryError();
   }
 }
 async function sendWelcomeEmail(to: string, requiresVerification = false) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || process.env.EMAIL_FROM;
-  if (!apiKey || !from) throw new Error('Email service is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel.');
+  const apiKey = (process.env.RESEND_API_KEY || process.env.RESEND_API_TOKEN || '').trim();
+  const from = (process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || process.env.EMAIL_FROM || process.env.EMAIL_FROM_ADDRESS || '').trim();
+  if (!apiKey || !from) throw new EmailConfigurationError();
   const message = requiresVerification
     ? 'Thank you for creating a MOSS account. For your security, enter the six-digit verification code sent in a separate email. You can sign in after your email address is verified.'
     : 'Your MOSS account is ready. You can sign in to explore our collection and manage your orders.';
@@ -213,6 +225,12 @@ router.post('/auth/register', async (req, res) => {
     return res.status(201).json({ requiresVerification: true, email: cleanEmail, expiresIn: '10 minutes' });
   } catch (err: any) {
     console.error('[Registration Error]', err);
+    if (err?.code === '23505' && String(err?.constraint || '').toLowerCase().includes('email')) {
+      return res.status(409).json({
+        code: 'ACCOUNT_ALREADY_EXISTS',
+        error: 'An account with this email already exists. Please sign in.',
+      });
+    }
     return res.status(500).json({ error: err.message || 'Could not register. Please try again.' });
   }
 });
@@ -340,7 +358,7 @@ router.post('/customers/:id/addresses', async (req, res) => {
   try {
     const customerId = req.params.id;
     const a = req.body;
-    const addrId = `addr-${Date.now()}`;
+    const addrId = 'addr-' + crypto.randomUUID();
 
     if (a.isDefault) {
       await query(`UPDATE addresses SET is_default = FALSE WHERE user_id = $1`, [customerId]);
@@ -451,6 +469,15 @@ router.post('/auth/forgot-password', async (req, res) => {
     return res.json({ sent: true, message: 'If an account exists for this email, a reset code has been sent.', expiresIn: '10 minutes' });
   } catch (err: any) {
     console.error('[Forgot Password Error]', err);
+    if (err instanceof EmailConfigurationError) {
+      return res.status(503).json({
+        code: 'EMAIL_SERVICE_NOT_CONFIGURED',
+        error: 'Password reset email is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Vercel Production environment.',
+      });
+    }
+    if (err instanceof EmailDeliveryError) {
+      return res.status(502).json({ code: 'EMAIL_DELIVERY_FAILED', error: 'The email service could not send a reset code. Please try again shortly.' });
+    }
     return res.status(500).json({ error: 'Could not send a reset code. Please try again.' });
   }
 });
@@ -464,6 +491,15 @@ router.post('/auth/resend-reset', async (req, res) => {
     return res.json({ sent: true, message: 'If an account exists, a new reset code has been sent.', expiresIn: '10 minutes' });
   } catch (err: any) {
     console.error('[Resend Reset Error]', err);
+    if (err instanceof EmailConfigurationError) {
+      return res.status(503).json({
+        code: 'EMAIL_SERVICE_NOT_CONFIGURED',
+        error: 'Password reset email is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Vercel Production environment.',
+      });
+    }
+    if (err instanceof EmailDeliveryError) {
+      return res.status(502).json({ code: 'EMAIL_DELIVERY_FAILED', error: 'The email service could not send a reset code. Please try again shortly.' });
+    }
     return res.status(500).json({ error: 'Could not resend reset code. Please try again.' });
   }
 });
