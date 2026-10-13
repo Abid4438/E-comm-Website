@@ -9,14 +9,14 @@ import { isGoogleAuthEnabled } from '../../config/auth';
 import { ArrowRight, Shield } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuthStore();
   const { showToast } = useToastStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/account';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,12 +35,29 @@ export const LoginPage: React.FC = () => {
         type: 'success',
       });
       navigate(user.role === 'admin' ? '/admin' : redirect);
-    } catch {
-      showToast({
-        title: 'Sign In Failed',
-        message: 'Invalid credentials. Please try again.',
-        type: 'error',
-      });
+    } catch (error) {
+      const authError = error as Error & { code?: string };
+      if (authError.code === 'ACCOUNT_NOT_FOUND') {
+        showToast({
+          title: 'Create an Account',
+          message: 'No account was found for this email. Opening registration.',
+          type: 'info',
+        });
+        navigate(`/register?email=${encodeURIComponent(email.trim())}`);
+      } else if (authError.code === 'EMAIL_NOT_VERIFIED') {
+        showToast({
+          title: 'Verify Your Email',
+          message: 'Enter the verification code sent to your email before signing in.',
+          type: 'info',
+        });
+        navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      } else {
+        showToast({
+          title: 'Sign In Failed',
+          message: authError.message || 'Invalid email or password. Please try again.',
+          type: 'error',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
