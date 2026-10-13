@@ -320,7 +320,7 @@ router.post('/', async (req, res) => {
 // PUT /api/orders/:id/status
 router.put('/:id/status', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdminGuard(req, res))) return;
     const { status, trackingNumber, carrier } = req.body;
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {
@@ -350,7 +350,7 @@ router.put('/:id/status', async (req, res) => {
 // PUT /api/orders/:id/cancel
 router.put('/:id/cancel', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdminGuard(req, res))) return;
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
