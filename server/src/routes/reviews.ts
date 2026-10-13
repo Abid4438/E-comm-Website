@@ -68,8 +68,18 @@ router.get('/product/:productId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const input = req.body;
+    if (!input || typeof input.productId !== 'string' || !input.productId ||
+        typeof input.author !== 'string' || !input.author.trim() ||
+        !Number.isInteger(Number(input.rating)) || Number(input.rating) < 1 || Number(input.rating) > 5 ||
+        typeof input.comment !== 'string' || !input.comment.trim()) {
+      return res.status(400).json({ error: 'Product, author, a 1–5 rating, and review comment are required.' });
+    }
+    if (input.comment.length > 5000 || input.author.length > 255 || String(input.title || '').length > 255) {
+      return res.status(400).json({ error: 'Review fields exceed the allowed length.' });
+    }
     const prodRes = await query(`SELECT name FROM products WHERE id = $1`, [input.productId]);
-    const productName = prodRes.rows[0]?.name || 'MOSS Essential Item';
+    if (!prodRes.rows.length) return res.status(404).json({ error: 'Product not found.' });
+    const productName = prodRes.rows[0].name;
 
     const id = `rev-${Date.now()}`;
     const date = new Date().toISOString().split('T')[0];
