@@ -6,6 +6,7 @@ import { seedDatabase } from '../server/src/seed.js';
 import productsRouter from '../server/src/routes/products.js';
 import categoriesRouter from '../server/src/routes/categories.js';
 import customersRouter from '../server/src/routes/customers.js';
+import contactRouter from '../server/src/routes/contact.js';
 import ordersRouter from '../server/src/routes/orders.js';
 import discountsRouter from '../server/src/routes/discounts.js';
 import reviewsRouter from '../server/src/routes/reviews.js';
@@ -30,6 +31,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api', customersRouter);
+app.use('/api/contact', contactRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/discounts', discountsRouter);
 app.use('/api/reviews', reviewsRouter);
@@ -78,6 +80,11 @@ export default async function handler(req: express.Request, res: express.Respons
       console.error('[Vercel DB Health Check Error]', err);
       return res.status(503).json({ status: 'error', database: 'unavailable' });
     }
+  }
+
+  // Contact email delivery does not depend on PostgreSQL; dispatch it without DB startup.
+  if (routePath === '/api/contact') {
+    return app(req, res);
   }
 
   if (!dbInitialized) {

@@ -6,6 +6,7 @@ import { seedDatabase } from './seed.js';
 import productsRouter from './routes/products.js';
 import categoriesRouter from './routes/categories.js';
 import customersRouter from './routes/customers.js';
+import contactRouter from './routes/contact.js';
 import ordersRouter from './routes/orders.js';
 import discountsRouter from './routes/discounts.js';
 import reviewsRouter from './routes/reviews.js';
@@ -33,6 +34,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api', customersRouter);
+app.use('/api/contact', contactRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/discounts', discountsRouter);
 app.use('/api/reviews', reviewsRouter);

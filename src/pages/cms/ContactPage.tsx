@@ -14,23 +14,40 @@ export const ContactPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToastStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !message) {
-      showToast({ title: 'Missing Info', message: 'Please fill out all fields.', type: 'error' });
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      showToast({ title: 'Missing Info', message: 'Please fill out all required fields.', type: 'error' });
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), topic, message: message.trim() }),
+      });
+      const result = await response.json().catch(() => ({ error: 'The message could not be sent. Please try again.' }));
+      if (!response.ok || result.success !== true) {
+        throw new Error(result.error || 'The message could not be sent. Please try again.');
+      }
+
       setIsSent(true);
       showToast({
         title: 'Message Sent',
-        message: 'A MOSS client concierge will respond within 24 hours.',
+        message: 'Your message has been emailed to MOSS support.',
         type: 'success',
       });
-    }, 800);
+    } catch (error) {
+      showToast({
+        title: 'Message Not Sent',
+        message: error instanceof Error ? error.message : 'Please try again shortly.',
+        type: 'error',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -47,7 +64,7 @@ export const ContactPage: React.FC = () => {
           Concierge & Support
         </h1>
         <p className="mt-2 text-xs sm:text-sm text-charcoal-600 max-w-2xl font-light">
-          Reach out at <strong>Abidaliaslam282@gmail.com</strong> — we'll respond within 24 hours. Studio located in your city; private appointments available on request.
+          Use this form to send your message directly to <strong>Abidaliaslam282@gmail.com</strong>. We'll reply to the email address you provide.
         </p>
       </div>
 
@@ -60,10 +77,10 @@ export const ContactPage: React.FC = () => {
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <h3 className="font-serif text-2xl text-charcoal-900 font-normal">
-                Message Dispatched
+                Message Sent
               </h3>
               <p className="text-xs text-charcoal-600 font-light max-w-sm mx-auto leading-relaxed">
-                Thank you for reaching out, {name}. A member of our concierge team will review your inquiry and follow up at <strong>{email}</strong> shortly.
+                Thank you for reaching out, {name}. Your message has been sent to our support inbox. We'll reply to <strong>{email}</strong>.
               </p>
               <Button
                 variant="outline"
