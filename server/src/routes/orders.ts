@@ -107,22 +107,8 @@ router.get('/', async (req, res) => {
 // GET /api/orders/customer/:customerId
 router.get('/customer/:customerId', async (req, res) => {
   try {
-    const authorization = req.headers.authorization;
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Sign in to view customer orders.' });
-    }
-
-    let claims: any;
-    try {
-      claims = jwt.verify(authorization.slice(7), JWT_SECRET) as any;
-    } catch {
-      return res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
-    }
-
     const cid = req.params.customerId;
-    if (String(claims.id) !== cid && claims.role !== 'admin') {
-      return res.status(403).json({ error: 'You can only view your own orders.' });
-    }
+    if (!(await requireUserOrAdmin(req, res, cid))) return;
 
     const customerRes = await query('SELECT id, email FROM users WHERE id = $1', [cid]);
     if (!customerRes.rows.length) return res.status(404).json({ error: 'Customer not found.' });
