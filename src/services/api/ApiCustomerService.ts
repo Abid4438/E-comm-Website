@@ -1,9 +1,5 @@
 import { ICustomerService } from '../interfaces/ICustomerService';
 import { Customer, Address } from '../../types/customer';
-import { MockCustomerService } from '../mock/MockCustomerService';
-
-const mockCustomerService = new MockCustomerService();
-
 const TOKEN_KEY = 'moss_auth_token';
 
 export class ApiCustomerService implements ICustomerService {
@@ -65,21 +61,17 @@ export class ApiCustomerService implements ICustomerService {
   }
 
   async googleLogin(data: { email: string; firstName: string; lastName: string; avatar?: string; googleId?: string }): Promise<{ customer: Customer; token: string }> {
-    try {
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const resData = await res.json();
-        if (resData.token) localStorage.setItem(TOKEN_KEY, resData.token);
-        return resData;
-      }
-    } catch {
-      // fallback
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const resData = await res.json().catch(() => ({ error: 'Google sign-in failed. Please try again.' }));
+    if (!res.ok) {
+      throw Object.assign(new Error(resData.error || 'Google sign-in failed. Please try again.'), { code: resData.code });
     }
-    return mockCustomerService.googleLogin(data);
+    if (resData.token) localStorage.setItem(TOKEN_KEY, resData.token);
+    return resData;
   }
 
   async register(data: { email: string; firstName: string; lastName: string; phone?: string; password?: string }): Promise<{ customer: Customer; token: string }> {

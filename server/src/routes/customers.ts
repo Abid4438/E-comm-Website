@@ -51,6 +51,16 @@ async function sendWelcomeEmail(to: string, requiresVerification = false) {
   }
 }
 
+async function linkHistoricalOrders(userId: string, email: string) {
+  await query(
+    `UPDATE orders
+     SET customer_id = $1
+     WHERE LOWER(TRIM(customer_info->>'email')) = LOWER(TRIM($2))
+       AND customer_id IS DISTINCT FROM $1`,
+    [userId, email]
+  );
+}
+
 async function createAndSendPin(userId: string, email: string, purpose: 'verify' | 'reset') {
   const pin = generatePin();
   const tokenHash = hashToken(pin);
@@ -146,6 +156,11 @@ router.post('/auth/google', async (req, res) => {
       userRow = (await query('SELECT * FROM users WHERE id = $1', [id])).rows[0];
       isNewUser = true;
     }
+    try {
+      await linkHistoricalOrders(userRow.id, cleanEmail);
+    } catch (linkError) {
+      console.error('[Google Order Link Error]', linkError);
+    }
     if (isNewUser) {
       try {
         await sendWelcomeEmail(cleanEmail);
@@ -167,8 +182,8 @@ router.post('/auth/google', async (req, res) => {
 router.post('/auth/register', async (req, res) => {
   try {
     const { email, firstName, lastName, phone, password } = req.body;
-    if (!email || typeof email !== 'string' || !password || typeof password !== 'string' || password.length < 8)
-      return res.status(400).json({ error: 'Email and a password of at least 8 characters are required.' });
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string')
+      return res.status(400).json({ error: 'Email and password are required.' });
     const cleanEmail = email.trim().toLowerCase();
     const existing = await query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     let userId: string;
@@ -176,6 +191,10 @@ router.post('/auth/register', async (req, res) => {
     if (existing.rows.length) {
       if (existing.rows[0].email_verified) return res.status(409).json({ code: 'ACCOUNT_ALREADY_EXISTS', error: 'An account with this email already exists. Please sign in.' });
       userId = existing.rows[0].id;
+      await query(
+        'UPDATE users SET password = $1, first_name = $2, last_name = $3, phone = $4 WHERE id = $5',
+        [await bcrypt.hash(password, 12), firstName || '', lastName || '', phone || '', userId]
+      );
     } else {
       userId = 'cust-' + crypto.randomUUID();
       await query("INSERT INTO users (id,email,password,first_name,last_name,phone,role,status,email_verified,registered_at) VALUES ($1,$2,$3,$4,$5,$6,'customer','Pending',FALSE,NOW())",
@@ -215,6 +234,11 @@ router.post('/auth/login', async (req, res) => {
       if (valid) await query('UPDATE users SET password = $1 WHERE id = $2', [await bcrypt.hash(password, 12), userRow.id]);
     }
     if (!valid) return res.status(401).json({ error: 'Invalid email or password.' });
+    try {
+      await linkHistoricalOrders(userRow.id, userRow.email);
+    } catch (linkError) {
+      console.error('[Login Order Link Error]', linkError);
+    }
     const customer = await formatCustomer(userRow);
     const token = jwt.sign({ id: userRow.id, email: userRow.email, role: userRow.role }, JWT_SECRET, { expiresIn: '30d' });
     return res.json({ customer, token });
@@ -503,6 +527,11 @@ router.post('/auth/confirm-email', async (req, res) => {
     if (!tokenRes.rows.length) return res.status(400).json({ error: 'Invalid or expired code. Request a new one.' });
     await query("UPDATE users SET email_verified=TRUE,status='Active' WHERE id=$1", [user.id]);
     await query('UPDATE email_verification_tokens SET used_at=NOW() WHERE id=$1', [tokenRes.rows[0].id]);
+    try {
+      await linkHistoricalOrders(user.id, cleanEmail);
+    } catch (linkError) {
+      console.error('[Verification Order Link Error]', linkError);
+    }
     return res.json({ verified: true, message: 'Email verified. You can now sign in.' });
   } catch (err: any) {
     console.error('[Confirm Email Error]', err);
