@@ -24,7 +24,7 @@ import {
 import { cn } from '../../utils/cn';
 
 export const AccountPage: React.FC = () => {
-  const { user, isAuthenticated, isLoading: isAuthLoading, logout, refreshUser } = useAuthStore();
+  const { user, isAuthenticated, logout, refreshUser } = useAuthStore();
   const { showToast } = useToastStore();
   const navigate = useNavigate();
 
@@ -57,11 +57,10 @@ export const AccountPage: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
-    // Wait for session restoration before redirecting on a hard refresh.
-    if (!isAuthLoading && !isAuthenticated && !user) {
-      navigate('/login?redirect=/account', { replace: true });
+    if (!isAuthenticated && !user) {
+      navigate('/login?redirect=/account');
     }
-  }, [isAuthLoading, isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -84,13 +83,7 @@ export const AccountPage: React.FC = () => {
     }
   }, [user]);
 
-  if (!user) {
-    return (
-      <div className="min-h-[40vh] flex items-center justify-center text-xs text-charcoal-500">
-        Restoring your account…
-      </div>
-    );
-  }
+  if (!user) return null;
 
   const handleLogout = async () => {
     await logout();

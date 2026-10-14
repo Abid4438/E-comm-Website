@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
@@ -9,10 +9,9 @@ import { isGoogleAuthEnabled } from '../../config/auth';
 import { ArrowRight, Shield } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState(() => searchParams.get('email') || '');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [password, setPassword] = useState('');
@@ -36,24 +35,16 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
     try {
       await registerUser({ email, firstName, lastName, phone, password });
-      showToast({ title: 'Check Your Email', message: 'A 6-digit verification code has been sent to your email.', type: 'success' });
+      const { sendVerificationEmail } = await import('../../services/apiClient');
+      await sendVerificationEmail(email);
+      showToast({ title: 'Account Created', message: 'Confirm email, then login.', type: 'success' });
       navigate('/verify-email?email=' + encodeURIComponent(email));
-    } catch (error) {
-      const authError = error as Error & { code?: string };
-      if (authError.code === 'ACCOUNT_ALREADY_EXISTS') {
-        showToast({
-          title: 'Account Already Exists',
-          message: 'This email is already registered. Opening sign in.',
-          type: 'info',
-        });
-        navigate(`/login?email=${encodeURIComponent(email.trim())}`);
-      } else {
-        showToast({
-          title: 'Registration Error',
-          message: authError.message || 'Could not create account. Please try again.',
-          type: 'error',
-        });
-      }
+    } catch {
+      showToast({
+        title: 'Registration Error',
+        message: 'Could not create account.',
+        type: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +155,7 @@ export const RegisterPage: React.FC = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Choose a password"
+              placeholder="••••••••"
               className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
             />
           </div>
