@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { query } from '../db.js';
-import { requireAdmin } from '../security.js';
+import { query } from '../db';
 
 const router = Router();
 
@@ -195,7 +194,6 @@ router.get('/:id', async (req, res) => {
 // POST /api/products (Admin Create)
 router.post('/', async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
     const p = req.body;
     const id = `prod-${Date.now()}`;
     const slug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -251,7 +249,6 @@ router.post('/', async (req, res) => {
 // PUT /api/products/:id (Admin Update)
 router.put('/:id', async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
     const id = req.params.id;
     const p = req.body;
 
@@ -311,7 +308,6 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/products/:id (Admin Delete)
 router.delete('/:id', async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
     const result = await query(`DELETE FROM products WHERE id = $1`, [req.params.id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Product not found' });

@@ -17,7 +17,7 @@ interface AuthState {
   isLoading: boolean;
   login: (email: string, password?: string) => Promise<Customer>;
   googleLogin: (data: GoogleLoginData) => Promise<Customer>;
-  register: (data: { email: string; firstName: string; lastName: string; phone?: string; password?: string }) => Promise<Customer | null>;
+  register: (data: { email: string; firstName: string; lastName: string; phone?: string; password?: string }) => Promise<Customer>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }>;
   resetPassword: (token: string, email: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
@@ -87,9 +87,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (data) => {
     set({ isLoading: true });
     try {
-      await customerService.register(data);
-      set({ user: null, isAuthenticated: false, isAdmin: false, isLoading: false });
-      return null;
+      const { customer } = await customerService.register(data);
+      set({
+        user: customer,
+        isAuthenticated: true,
+        isAdmin: customer.role === 'admin',
+        isLoading: false,
+      });
+      return customer;
     } catch (err) {
       set({ isLoading: false });
       throw err;

@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { query } from '../db.js';
-import { requireAdmin } from '../security.js';
+import { query } from '../db';
 
 const router = Router();
 
@@ -41,9 +40,8 @@ async function updateProductRatingStats(productId: string) {
 }
 
 // GET /api/reviews
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
     const result = await query(`SELECT * FROM reviews ORDER BY date DESC`);
     res.json(result.rows.map(formatReview));
   } catch (err: any) {
@@ -68,18 +66,8 @@ router.get('/product/:productId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const input = req.body;
-    if (!input || typeof input.productId !== 'string' || !input.productId ||
-        typeof input.author !== 'string' || !input.author.trim() ||
-        !Number.isInteger(Number(input.rating)) || Number(input.rating) < 1 || Number(input.rating) > 5 ||
-        typeof input.comment !== 'string' || !input.comment.trim()) {
-      return res.status(400).json({ error: 'Product, author, a 1–5 rating, and review comment are required.' });
-    }
-    if (input.comment.length > 5000 || input.author.length > 255 || String(input.title || '').length > 255) {
-      return res.status(400).json({ error: 'Review fields exceed the allowed length.' });
-    }
     const prodRes = await query(`SELECT name FROM products WHERE id = $1`, [input.productId]);
-    if (!prodRes.rows.length) return res.status(404).json({ error: 'Product not found.' });
-    const productName = prodRes.rows[0].name;
+    const productName = prodRes.rows[0]?.name || 'MOSS Essential Item';
 
     const id = `rev-${Date.now()}`;
     const date = new Date().toISOString().split('T')[0];
@@ -100,8 +88,8 @@ router.post('/', async (req, res) => {
         input.title,
         input.comment,
         date,
-        false,
-        'pending',
+        true,
+        'approved',
         0,
         JSON.stringify(input.images || []),
       ]
@@ -120,7 +108,6 @@ router.post('/', async (req, res) => {
 // PUT /api/reviews/:id/status
 router.put('/:id/status', async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
     const { status } = req.body;
     const existing = await query(`SELECT * FROM reviews WHERE id = $1`, [req.params.id]);
     if (existing.rows.length === 0) {

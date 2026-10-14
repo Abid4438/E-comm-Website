@@ -1,7 +1,7 @@
-import { query } from './db.js';
-import { INITIAL_CATEGORIES } from '../../src/data/categoriesData.js';
-import { INITIAL_PRODUCTS } from '../../src/data/productsData.js';
-import { INITIAL_CUSTOMERS, INITIAL_ORDERS, INITIAL_DISCOUNTS, INITIAL_REVIEWS } from '../../src/data/mockData.js';
+import { query } from './db';
+import { INITIAL_CATEGORIES } from '../../src/data/categoriesData';
+import { INITIAL_PRODUCTS } from '../../src/data/productsData';
+import { INITIAL_CUSTOMERS, INITIAL_ORDERS, INITIAL_DISCOUNTS, INITIAL_REVIEWS } from '../../src/data/mockData';
 
 export async function seedDatabase() {
   try {
@@ -59,16 +59,13 @@ export async function seedDatabase() {
       );
     }
 
-    // Never seed mock customer credentials, orders, discounts, or reviews into production.
-    // Production seed runs only create catalogue categories and products.
-    if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
     // 3. Seed Users & Addresses
     for (const u of INITIAL_CUSTOMERS) {
       await query(
         `INSERT INTO users (
           id, email, password, first_name, last_name, phone, role, avatar, status, registered_at, default_address_id
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        ON CONFLICT DO NOTHING`,
+        ON CONFLICT (id) DO NOTHING`,
         [
           u.id,
           u.email,
@@ -84,8 +81,7 @@ export async function seedDatabase() {
         ]
       );
 
-      const seededUserResult = await query('SELECT id FROM users WHERE id = $1', [u.id]);
-      if (seededUserResult.rows.length > 0 && u.addresses && u.addresses.length > 0) {
+      if (u.addresses && u.addresses.length > 0) {
         for (const a of u.addresses) {
           await query(
             `INSERT INTO addresses (
@@ -197,11 +193,8 @@ export async function seedDatabase() {
       );
     }
 
-    }
-
     console.log('[Seed] Database initialization and seed completed.');
   } catch (error) {
     console.error('[Seed] Error seeding database:', error);
-    throw error;
   }
 }

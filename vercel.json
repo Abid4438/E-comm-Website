@@ -6,16 +6,8 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/health/db",
-      "destination": "/api/db-health"
-    },
-    {
-      "source": "/api/health",
-      "destination": "/api/healthcheck"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index?path=:path*"
+      "source": "/api/(.*)",
+      "destination": "/api/index?path=$1"
     },
     {
       "source": "/(.*)",

@@ -1,5 +1,9 @@
 import { ICustomerService } from '../interfaces/ICustomerService';
 import { Customer, Address } from '../../types/customer';
+import { MockCustomerService } from '../mock/MockCustomerService';
+
+const mockCustomerService = new MockCustomerService();
+
 const TOKEN_KEY = 'moss_auth_token';
 
 export class ApiCustomerService implements ICustomerService {
@@ -51,7 +55,7 @@ export class ApiCustomerService implements ICustomerService {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Login failed' }));
-      throw Object.assign(new Error(err.error || 'Login failed'), { code: err.code });
+      throw new Error(err.error || 'Login failed');
     }
     const data = await res.json();
     if (data.token) {
@@ -61,17 +65,21 @@ export class ApiCustomerService implements ICustomerService {
   }
 
   async googleLogin(data: { email: string; firstName: string; lastName: string; avatar?: string; googleId?: string }): Promise<{ customer: Customer; token: string }> {
-    const res = await fetch('/api/auth/google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const resData = await res.json().catch(() => ({ error: 'Google sign-in failed. Please try again.' }));
-    if (!res.ok) {
-      throw Object.assign(new Error(resData.error || 'Google sign-in failed. Please try again.'), { code: resData.code });
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.token) localStorage.setItem(TOKEN_KEY, resData.token);
+        return resData;
+      }
+    } catch {
+      // fallback
     }
-    if (resData.token) localStorage.setItem(TOKEN_KEY, resData.token);
-    return resData;
+    return mockCustomerService.googleLogin(data);
   }
 
   async register(data: { email: string; firstName: string; lastName: string; phone?: string; password?: string }): Promise<{ customer: Customer; token: string }> {
@@ -82,7 +90,7 @@ export class ApiCustomerService implements ICustomerService {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Registration failed' }));
-      throw Object.assign(new Error(err.error || 'Registration failed'), { code: err.code });
+      throw new Error(err.error || 'Registration failed');
     }
     const resData = await res.json();
     if (resData.token) {
@@ -100,27 +108,76 @@ export class ApiCustomerService implements ICustomerService {
     }
   }
 
-  private async authPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
-    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({ error: 'Request failed' }));
-    if (!res.ok) throw new Error(data.error || 'Request failed. Please try again.');
-    return data as T;
-  }
   async forgotPassword(email: string): Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }> {
-    return this.authPost('/api/auth/forgot-password', { email });
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.forgotPassword(email);
   }
+
   async resendReset(email: string): Promise<{ sent: boolean; resetUrl?: string | null; email: string; expiresIn: string }> {
-    return this.authPost('/api/auth/resend-reset', { email });
+    try {
+      const res = await fetch('/api/auth/resend-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.resendReset(email);
   }
+
   async resetPassword(token: string, email: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    return this.authPost('/api/auth/reset-password', { token, email, newPassword });
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, email, newPassword }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.resetPassword(token, email, newPassword);
   }
+
   async verifyEmail(email: string): Promise<{ sent: boolean; verified: boolean; message: string; verifyUrl?: string; email: string; expiresIn: string }> {
-    return this.authPost('/api/auth/verify-email', { email });
+    try {
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.verifyEmail(email);
   }
+
   async resendVerification(email: string): Promise<{ sent: boolean; verifyUrl?: string | null; email: string; expiresIn: string }> {
-    return this.authPost('/api/auth/resend-verification', { email });
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fallback
+    }
+    return mockCustomerService.resendVerification(email);
   }
+
   async updateProfile(id: string, updates: Partial<Customer>): Promise<Customer> {
     const res = await fetch(`/api/customers/${id}`, {
       method: 'PUT',

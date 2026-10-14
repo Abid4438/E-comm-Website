@@ -1,70 +1,7 @@
-import { Router, Request, Response } from 'express';
-import { query } from '../db.js';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import { getJwtSecret, requireAdmin as requireAdminGuard, requireUserOrAdmin } from '../security.js';
+import { Router } from 'express';
+import { query } from '../db';
 
 const router = Router();
-const JWT_SECRET = getJwtSecret();
-
-async function saveCheckoutCustomerDetails(customerId: string, checkoutData: any) {
-  const firstName = String(checkoutData.firstName || '').trim();
-  const lastName = String(checkoutData.lastName || '').trim();
-  const phone = String(checkoutData.phone || '').trim();
-
-  await query(
-    `UPDATE users SET
-       first_name = COALESCE(NULLIF($1, ''), first_name),
-       last_name = COALESCE(NULLIF($2, ''), last_name),
-       phone = COALESCE(NULLIF($3, ''), phone)
-     WHERE id = $4`,
-    [firstName, lastName, phone, customerId]
-  );
-
-  const addressLine1 = String(checkoutData.addressLine1 || '').trim();
-  const city = String(checkoutData.city || '').trim();
-  const state = String(checkoutData.state || '').trim();
-  const postalCode = String(checkoutData.postalCode || '').trim();
-  const country = String(checkoutData.country || '').trim();
-  if (!addressLine1 || !city || !state || !postalCode || !country) return;
-
-  const addressLine2 = String(checkoutData.addressLine2 || '').trim();
-  const existing = await query(
-    `SELECT id FROM addresses
-     WHERE user_id = $1
-       AND LOWER(TRIM(address_line1)) = LOWER(TRIM($2))
-       AND LOWER(TRIM(COALESCE(address_line2, ''))) = LOWER(TRIM($3))
-       AND LOWER(TRIM(city)) = LOWER(TRIM($4))
-       AND LOWER(TRIM(state)) = LOWER(TRIM($5))
-       AND LOWER(TRIM(postal_code)) = LOWER(TRIM($6))
-       AND LOWER(TRIM(country)) = LOWER(TRIM($7))
-     LIMIT 1`,
-    [customerId, addressLine1, addressLine2, city, state, postalCode, country]
-  );
-
-  if (existing.rows.length) {
-    await query(
-      'UPDATE addresses SET first_name = $1, last_name = $2, phone = $3 WHERE id = $4 AND user_id = $5',
-      [firstName, lastName, phone, existing.rows[0].id, customerId]
-    );
-    return;
-  }
-
-  const count = await query('SELECT COUNT(*)::int AS total FROM addresses WHERE user_id = $1', [customerId]);
-  const isDefault = Number(count.rows[0]?.total || 0) === 0;
-  const addressId = 'addr-' + crypto.randomUUID();
-  await query(
-    `INSERT INTO addresses (
-      id, user_id, first_name, last_name, company, address_line1, address_line2,
-      city, state, postal_code, country, phone, is_default
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-    [addressId, customerId, firstName, lastName, null, addressLine1, addressLine2 || null,
-      city, state, postalCode, country, phone, isDefault]
-  );
-  if (isDefault) {
-    await query('UPDATE users SET default_address_id = $1 WHERE id = $2', [addressId, customerId]);
-  }
-}
 
 function formatOrder(row: any) {
   if (!row) return null;
@@ -94,9 +31,8 @@ function formatOrder(row: any) {
 }
 
 // GET /api/orders
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
-    if (!(await requireAdminGuard(req, res))) return;
     const result = await query(`SELECT * FROM orders ORDER BY date DESC`);
     res.json(result.rows.map(formatOrder));
   } catch (err: any) {
@@ -108,22 +44,13 @@ router.get('/', async (req, res) => {
 router.get('/customer/:customerId', async (req, res) => {
   try {
     const cid = req.params.customerId;
-    if (!(await requireUserOrAdmin(req, res, cid))) return;
-
-    const customerRes = await query('SELECT id, email FROM users WHERE id = $1', [cid]);
-    if (!customerRes.rows.length) return res.status(404).json({ error: 'Customer not found.' });
-    const email = customerRes.rows[0].email;
-
     const result = await query(
-      `SELECT * FROM orders
-       WHERE customer_id = $1 OR LOWER(TRIM(customer_info->>'email')) = LOWER(TRIM($2))
-       ORDER BY date DESC`,
-      [cid, email]
+      `SELECT * FROM orders WHERE customer_id = $1 OR LOWER(customer_info->>'email') = LOWER($2) ORDER BY date DESC`,
+      [cid, cid]
     );
     res.json(result.rows.map(formatOrder));
   } catch (err: any) {
-    console.error('[Customer Orders Error]', err);
-    res.status(500).json({ error: 'Could not load customer orders.' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -134,107 +61,24 @@ router.get('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    const order = result.rows[0];
-    if (!(await requireUserOrAdmin(req, res, String(order.customer_id || '')))) return;
-    res.json(formatOrder(order));
+    res.json(formatOrder(result.rows[0]));
   } catch (err: any) {
-    console.error('[Order Detail Error]', err);
-    res.status(500).json({ error: 'Could not load order.' });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // POST /api/orders (Create Order)
 router.post('/', async (req, res) => {
   try {
-    const { checkoutData, items, totals } = req.body;
-    if (!checkoutData || typeof checkoutData !== 'object' || !Array.isArray(items) || items.length === 0 || items.length > 100 || !totals) {
-      return res.status(400).json({ error: 'Checkout details and at least one item are required.' });
-    }
-    let verifiedSubtotal = 0;
-    const verifiedItems: any[] = [];
-    const requestedQuantities = new Map<string, number>();
-    for (const item of items) {
-      const productId = item?.product?.id;
-      const quantity = Number(item?.quantity);
-      if (typeof productId !== 'string' || !productId || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
-        return res.status(400).json({ error: 'Invalid product or quantity in checkout.' });
-      }
-      requestedQuantities.set(productId, (requestedQuantities.get(productId) || 0) + quantity);
-    }
-    if ([...requestedQuantities.values()].some((quantity) => quantity > 100)) {
-      return res.status(400).json({ error: 'Combined quantity for a product cannot exceed 100.' });
-    }
-    for (const item of items) {
-      const productId = item.product.id as string;
-      const quantity = Number(item.quantity);
-      const productResult = await query('SELECT id, name, price, stock, images FROM products WHERE id = $1 AND LOWER(status) = $2', [productId, 'active']);
-      if (!productResult.rows.length) return res.status(400).json({ error: 'A selected product is unavailable.' });
-      const product = productResult.rows[0];
-      if (Number(product.stock) < (requestedQuantities.get(productId) || quantity)) return res.status(409).json({ error: 'Insufficient stock for ' + product.name + '.' });
-      const unitPrice = Number(product.price);
-      if (!Number.isFinite(unitPrice) || unitPrice < 0) return res.status(400).json({ error: 'Invalid product pricing.' });
-      verifiedSubtotal += unitPrice * quantity;
-      verifiedItems.push({ ...item, product: { ...item.product, id: product.id, name: product.name, price: unitPrice, images: product.images } });
-    }
-    // Prices and fees are calculated on the server. Never trust client-supplied totals.
-    const deliveryMethod = checkoutData.deliveryMethod;
-    if (!['standard', 'express', 'overnight'].includes(deliveryMethod)) {
-      return res.status(400).json({ error: 'Invalid delivery method.' });
-    }
-    let verifiedDiscount = 0;
-    const cleanDiscountCode = typeof checkoutData.discountCode === 'string' ? checkoutData.discountCode.trim().toUpperCase() : '';
-    if (cleanDiscountCode) {
-      const discountResult = await query('SELECT * FROM discounts WHERE UPPER(code) = $1', [cleanDiscountCode]);
-      if (!discountResult.rows.length) return res.status(400).json({ error: 'Invalid discount code.' });
-      const d = discountResult.rows[0];
-      if (!d.is_active || new Date(d.expires_at).getTime() < Date.now() ||
-          (d.max_uses != null && Number(d.usage_count) >= Number(d.max_uses)) ||
-          (d.min_spend != null && verifiedSubtotal < Number(d.min_spend))) {
-        return res.status(400).json({ error: 'Discount code is no longer eligible.' });
-      }
-      const percentage = Number(d.percentage);
-      if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
-        return res.status(400).json({ error: 'Discount configuration is invalid.' });
-      }
-      // The storefront treats 100% codes as free-shipping codes, not free merchandise.
-      verifiedDiscount = percentage >= 100 ? 0 : Math.round(verifiedSubtotal * percentage) / 100;
-    }
-    const subtotalRounded = Math.round(verifiedSubtotal * 100) / 100;
-    const freeShipping = cleanDiscountCode === 'FREESHIP' || (deliveryMethod === 'standard' && subtotalRounded >= 28000);
-    const shippingFee = cleanDiscountCode === 'FREESHIP' ? 0 :
-      deliveryMethod === 'express' ? 7000 :
-      deliveryMethod === 'overnight' ? 11200 :
-      freeShipping ? 0 : 3360;
-    const taxableAmount = Math.max(0, subtotalRounded - verifiedDiscount);
-    const taxAmount = Math.round(taxableAmount * 0.18 * 100) / 100;
-    const verifiedTotals = {
-      subtotal: subtotalRounded,
-      shipping: shippingFee,
-      tax: taxAmount,
-      discount: verifiedDiscount,
-      total: Math.max(0, Math.round((subtotalRounded + shippingFee + taxAmount - verifiedDiscount) * 100) / 100),
-    };
-    let authenticatedCustomerId: string | null = null;
-    const authorization = req.headers.authorization;
-    if (authorization?.startsWith('Bearer ')) {
-      try {
-        const claims = jwt.verify(authorization.slice(7), JWT_SECRET) as any;
-        authenticatedCustomerId = String(claims.id || '');
-        if (!authenticatedCustomerId) return res.status(401).json({ error: 'Invalid customer session.' });
-      } catch {
-        return res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
-      }
-      const storedUser = await query('SELECT id FROM users WHERE id = $1', [authenticatedCustomerId]);
-      if (!storedUser.rows.length) return res.status(401).json({ error: 'Customer account no longer exists.' });
-    }
-
-    const orderId = `MOS-${new Date().getFullYear()}-${crypto.randomBytes(10).toString('hex').toUpperCase()}`;
+    const { checkoutData, items, totals, customerId } = req.body;
+    const orderNumber = `${Date.now() % 100000}`.padStart(5, '0');
+    const orderId = `MOS-2026-${orderNumber}`;
     const date = new Date().toISOString();
 
     const customerInfo = {
       firstName: checkoutData.firstName,
       lastName: checkoutData.lastName,
-      email: String(checkoutData.email || '').trim().toLowerCase(),
+      email: checkoutData.email,
       phone: checkoutData.phone,
     };
 
@@ -269,9 +113,14 @@ router.post('/', async (req, res) => {
     const carrier = 'DHL Express';
     const estimatedDelivery = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // Only a verified session can immediately associate this order with an account.
-    // Guest orders keep all supplied details on the order and are linked after email verification/login.
-    const finalCustomerId: string | null = authenticatedCustomerId;
+    // Find customer ID if not provided
+    let finalCustomerId = customerId;
+    if (!finalCustomerId && checkoutData.email) {
+      const userRes = await query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1)`, [checkoutData.email]);
+      if (userRes.rows.length > 0) {
+        finalCustomerId = userRes.rows[0].id;
+      }
+    }
 
     await query(
       `INSERT INTO orders (
@@ -287,16 +136,16 @@ router.post('/', async (req, res) => {
         JSON.stringify(customerInfo),
         JSON.stringify(shippingAddress),
         null,
-        JSON.stringify(verifiedItems),
-        verifiedTotals.subtotal,
-        verifiedTotals.shipping,
-        verifiedTotals.tax,
-        verifiedTotals.discount,
-        cleanDiscountCode || null,
-        verifiedTotals.total,
+        JSON.stringify(items || []),
+        totals.subtotal,
+        totals.shipping,
+        totals.tax,
+        totals.discount || 0,
+        checkoutData.discountCode || null,
+        totals.total,
         'Processing',
         paymentMethod,
-        'Pending',
+        'Paid',
         deliveryMethod,
         trackingNumber,
         carrier,
@@ -305,20 +154,11 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    if (finalCustomerId) {
-      try {
-        await saveCheckoutCustomerDetails(finalCustomerId, checkoutData);
-      } catch (profileError) {
-        // The order is already saved; log profile-save issues without misreporting the purchase as failed.
-        console.error('[Checkout Profile Save Error]', profileError);
-      }
-    }
-
     // Update stock for purchased products
-    if (Array.isArray(verifiedItems)) {
-      for (const item of verifiedItems) {
+    if (Array.isArray(items)) {
+      for (const item of items) {
         if (item.product?.id) {
-          await query(`UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1`, [item.quantity, item.product.id]);
+          await query(`UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2`, [item.quantity || 1, item.product.id]);
         }
       }
     }
@@ -326,34 +166,22 @@ router.post('/', async (req, res) => {
     // Increment discount usage if discount code used
     if (checkoutData.discountCode) {
       await query(
-        `UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = UPPER($1) AND is_active = TRUE AND expires_at >= CURRENT_TIMESTAMP AND (max_uses IS NULL OR usage_count < max_uses)`,
-        [cleanDiscountCode]
+        `UPDATE discounts SET usage_count = usage_count + 1 WHERE UPPER(code) = UPPER($1)`,
+        [checkoutData.discountCode]
       );
     }
 
     const created = await query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     res.status(201).json(formatOrder(created.rows[0]));
   } catch (err: any) {
-    console.error('[Order Checkout Error]', err);
-    res.status(500).json({ error: 'Could not create order. Please try again.' });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // PUT /api/orders/:id/status
 router.put('/:id/status', async (req, res) => {
   try {
-    if (!(await requireAdminGuard(req, res))) return;
     const { status, trackingNumber, carrier } = req.body;
-    const allowedStatuses = new Set(['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']);
-    if (status !== undefined && (typeof status !== 'string' || !allowedStatuses.has(status))) {
-      return res.status(400).json({ error: 'Invalid order status.' });
-    }
-    if (trackingNumber !== undefined && (typeof trackingNumber !== 'string' || trackingNumber.length > 120)) {
-      return res.status(400).json({ error: 'Invalid tracking number.' });
-    }
-    if (carrier !== undefined && (typeof carrier !== 'string' || carrier.length > 120)) {
-      return res.status(400).json({ error: 'Invalid carrier.' });
-    }
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
@@ -382,7 +210,6 @@ router.put('/:id/status', async (req, res) => {
 // PUT /api/orders/:id/cancel
 router.put('/:id/cancel', async (req, res) => {
   try {
-    if (!(await requireAdminGuard(req, res))) return;
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });

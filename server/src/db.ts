@@ -20,17 +20,8 @@ export async function getDBClient() {
     return { pool, pglite, isPgLite };
   }
 
-  const isVercel = process.env.VERCEL === '1';
-  const isProduction = process.env.NODE_ENV === 'production' || isVercel;
-
-  // The Neon integration currently provides DATABASE_URL_UNPOOLED for Production.
-  // Prefer it on Vercel so a stale manually-created DATABASE_URL (for example localhost)
-  // cannot override the hosted Neon database. Locally, keep DATABASE_URL first.
-  const databaseUrl = isProduction
-    ? (isVercel
-        ? (process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL)
-        : (process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED))
-    : (process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED || 'postgresql://postgres:postgres@localhost:5432/moss');
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+  const databaseUrl = process.env.DATABASE_URL;
 
   if (isProduction && !databaseUrl) {
     throw new Error('DATABASE_URL is required in production. Configure it in Vercel Project Settings > Environment Variables.');
@@ -39,7 +30,7 @@ export async function getDBClient() {
   try {
     const testPool = new Pool({
       connectionString: databaseUrl,
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: 1500,
     });
     // Test connection with a quick query
     const client = await testPool.connect();
@@ -105,9 +96,6 @@ export async function initDB() {
       default_address_id VARCHAR(100)
     )
   `);
-
-  // Existing users remain verified; new email signups explicitly set this to false.
-  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT TRUE`);
 
   // Create Addresses Table
   await query(`
@@ -262,68 +250,6 @@ export async function initDB() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-
-  // Consolidate any legacy customer rows that differ only by email casing or surrounding spaces.
-  // Keep the verified/oldest row, move its orders and all saved addresses across, and invalidate duplicate-account tokens.
-  const duplicateEmailGroups = await query<{ user_ids: unknown }>(`
-    SELECT JSON_AGG(id ORDER BY email_verified DESC NULLS LAST, registered_at ASC NULLS LAST, id ASC) AS user_ids
-    FROM users
-    GROUP BY LOWER(TRIM(email))
-    HAVING COUNT(*) > 1
-  `);
-
-  for (const group of duplicateEmailGroups.rows) {
-    let parsedIds: unknown;
-    try {
-      parsedIds = typeof group.user_ids === 'string' ? JSON.parse(group.user_ids) : group.user_ids;
-    } catch {
-      parsedIds = [];
-    }
-    const userIds = Array.isArray(parsedIds) ? [...new Set(parsedIds.map(String))].filter(Boolean) : [];
-    if (userIds.length < 2) continue;
-
-    const [keeperId, ...duplicateIds] = userIds;
-    await query('UPDATE orders SET customer_id = $1 WHERE customer_id = ANY($2)', [keeperId, duplicateIds]);
-    await query('UPDATE addresses SET user_id = $1 WHERE user_id = ANY($2)', [keeperId, duplicateIds]);
-    await query('DELETE FROM password_reset_tokens WHERE user_id = ANY($1)', [duplicateIds]);
-    await query('DELETE FROM email_verification_tokens WHERE user_id = ANY($1)', [duplicateIds]);
-
-    await query(`
-      UPDATE users SET
-        first_name = COALESCE(NULLIF(first_name, ''), (
-          SELECT NULLIF(first_name, '') FROM users
-          WHERE id = ANY($1) AND NULLIF(first_name, '') IS NOT NULL
-          ORDER BY email_verified DESC NULLS LAST, registered_at ASC NULLS LAST LIMIT 1
-        )),
-        last_name = COALESCE(NULLIF(last_name, ''), (
-          SELECT NULLIF(last_name, '') FROM users
-          WHERE id = ANY($1) AND NULLIF(last_name, '') IS NOT NULL
-          ORDER BY email_verified DESC NULLS LAST, registered_at ASC NULLS LAST LIMIT 1
-        )),
-        phone = COALESCE(NULLIF(phone, ''), (
-          SELECT NULLIF(phone, '') FROM users
-          WHERE id = ANY($1) AND NULLIF(phone, '') IS NOT NULL
-          ORDER BY email_verified DESC NULLS LAST, registered_at ASC NULLS LAST LIMIT 1
-        )),
-        avatar = COALESCE(NULLIF(avatar, ''), (
-          SELECT NULLIF(avatar, '') FROM users
-          WHERE id = ANY($1) AND NULLIF(avatar, '') IS NOT NULL
-          ORDER BY email_verified DESC NULLS LAST, registered_at ASC NULLS LAST LIMIT 1
-        )),
-        default_address_id = COALESCE(default_address_id, (
-          SELECT default_address_id FROM users
-          WHERE id = ANY($1) AND default_address_id IS NOT NULL
-          ORDER BY email_verified DESC NULLS LAST, registered_at ASC NULLS LAST LIMIT 1
-        ))
-      WHERE id = $2
-    `, [duplicateIds, keeperId]);
-
-    await query('DELETE FROM users WHERE id = ANY($1)', [duplicateIds]);
-  }
-
-  // Normalize stored addresses for future logins and enforce uniqueness at the database level.
-  await query('UPDATE users SET email = LOWER(TRIM(email)) WHERE email <> LOWER(TRIM(email))');
-  await query('CREATE UNIQUE INDEX IF NOT EXISTS users_email_normalized_unique_idx ON users (LOWER(TRIM(email)))');
 
   console.log('[Database] Tables initialized successfully');
 }
