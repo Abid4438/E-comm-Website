@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,12 +28,12 @@ const checkoutSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().min(2, 'Last name is required'),
-  phone: z.string().min(6, 'Valid phone number is required'),
+  phone: z.string().regex(/^\+?[\d\s().-]{7,20}$/, 'Enter a valid phone number'),
   addressLine1: z.string().min(5, 'Street address is required'),
   addressLine2: z.string().optional(),
   city: z.string().min(2, 'City is required'),
   state: z.string().min(2, 'State / Province is required'),
-  postalCode: z.string().min(3, 'Postal code is required'),
+  postalCode: z.string().regex(/^[\da-zA-Z][\da-zA-Z\s-]{1,9}$/, 'Enter a valid postal code'),
   country: z.string().min(2, 'Country is required'),
   deliveryMethod: z.enum(['standard', 'express', 'overnight']),
   paymentMethod: z.enum(['credit_card', 'apple_pay', 'klarna']),
@@ -42,9 +42,50 @@ const checkoutSchema = z.object({
   cardCvc: z.string().optional(),
   cardName: z.string().optional(),
   notes: z.string().optional(),
+}).superRefine((data, context) => {
+  if (data.paymentMethod !== 'credit_card') return;
+
+  const cardNumber = (data.cardNumber || '').replace(/\D/g, '');
+  if (cardNumber.length < 13 || cardNumber.length > 19 || !passesLuhnCheck(cardNumber)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardNumber'], message: 'Enter a valid card number' });
+  }
+
+  const expiryMatch = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(data.cardExpiry || '');
+  if (!expiryMatch) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardExpiry'], message: 'Enter expiry as MM/YY' });
+  } else {
+    const month = Number(expiryMatch[1]);
+    const year = 2000 + Number(expiryMatch[2]);
+    const now = new Date();
+    if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardExpiry'], message: 'Card has expired' });
+    }
+  }
+
+  if (!/^\d{3,4}$/.test(data.cardCvc || '')) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardCvc'], message: 'Enter a valid security code' });
+  }
+  if (!(data.cardName || '').trim()) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardName'], message: 'Enter the cardholder name' });
+  }
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
+
+const passesLuhnCheck = (cardNumber: string) => {
+  let sum = 0;
+  let doubleDigit = false;
+  for (let index = cardNumber.length - 1; index >= 0; index -= 1) {
+    let digit = Number(cardNumber[index]);
+    if (doubleDigit) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    doubleDigit = !doubleDigit;
+  }
+  return sum % 10 === 0;
+};
 
 export const CheckoutPage: React.FC = () => {
   const {
@@ -68,6 +109,7 @@ export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLock = useRef(false);
   const [promoInput, setPromoInput] = useState('');
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
 
@@ -95,7 +137,7 @@ export const CheckoutPage: React.FC = () => {
       country: defaultAddress?.country || 'Pakistan',
       deliveryMethod: shippingOption || 'standard',
       paymentMethod: 'credit_card',
-      cardNumber: '4242 •••• •••• 4242',
+      cardNumber: '4242 4242 4242 4242',
       cardExpiry: '08/28',
       cardCvc: '888',
       cardName: user ? `${user.firstName} ${user.lastName}` : 'Elena Rostova',
@@ -150,6 +192,7 @@ export const CheckoutPage: React.FC = () => {
   };
 
   const onSubmit = async (data: CheckoutFormValues) => {
+    if (submitLock.current) return;
     if (items.length === 0) {
       showToast({
         title: 'Empty Bag',
@@ -160,6 +203,7 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
+    submitLock.current = true;
     setIsSubmitting(true);
     try {
       const checkoutData: CheckoutFormData = {
@@ -193,6 +237,7 @@ export const CheckoutPage: React.FC = () => {
         type: 'error',
       });
     } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -566,6 +611,7 @@ export const CheckoutPage: React.FC = () => {
                     placeholder="4242 •••• •••• 4242"
                     className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
                   />
+                  {errors.cardNumber && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardNumber.message}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -579,6 +625,7 @@ export const CheckoutPage: React.FC = () => {
                       placeholder="MM/YY"
                       className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
                     />
+                    {errors.cardExpiry && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardExpiry.message}</p>}
                   </div>
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
@@ -590,6 +637,7 @@ export const CheckoutPage: React.FC = () => {
                       placeholder="CVC"
                       className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
                     />
+                    {errors.cardCvc && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardCvc.message}</p>}
                   </div>
                 </div>
 
@@ -602,6 +650,7 @@ export const CheckoutPage: React.FC = () => {
                     {...register('cardName')}
                     className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
                   />
+                  {errors.cardName && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardName.message}</p>}
                 </div>
               </div>
             )}

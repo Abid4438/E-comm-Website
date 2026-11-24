@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { CartItem } from '../types/cart';
 import { Product } from '../types/product';
 import { Discount } from '../types/discount';
-import { API_CONFIG } from '../services/apiClient';
+import { getStoreConfig } from '../services/apiClient';
 
 const STORAGE_KEY = 'moss_cart_state';
 
@@ -74,6 +74,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   orderNotes: initialData.orderNotes,
 
   addItem: (product, quantity = 1, color, size) => {
+    if (product.stock <= 0 || quantity <= 0) return;
     // Determine selected values with fallbacks
     const selectedColor = color || (product.colors.length > 0 ? product.colors[0].name : undefined);
     const selectedSize = size || (product.sizes.length > 0 ? product.sizes[0].name : undefined);
@@ -123,13 +124,11 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
 
     set((state) => {
-      const updated = state.items.map((item) => {
-        if (item.id === itemId) {
-          const maxStock = item.product.stock || 99;
-          return { ...item, quantity: Math.min(quantity, maxStock) };
-        }
-        return item;
-      });
+      const updated = state.items
+        .filter((item) => item.id !== itemId || item.product.stock > 0)
+        .map((item) => item.id === itemId
+          ? { ...item, quantity: Math.max(1, Math.min(quantity, item.product.stock)) }
+          : item);
       saveCart(updated, state.appliedDiscount, state.shippingOption, state.orderNotes);
       return { items: updated };
     });
@@ -180,12 +179,12 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   getQualifiesForFreeShipping: () => {
     const option = get().shippingOption;
-    return option === 'standard' && get().getSubtotal() >= API_CONFIG.freeShippingThreshold;
+    return option === 'standard' && get().getSubtotal() >= getStoreConfig().freeShippingThreshold;
   },
 
   getAmountUntilFreeShipping: () => {
     const subtotal = get().getSubtotal();
-    return Math.max(0, API_CONFIG.freeShippingThreshold - subtotal);
+    return Math.max(0, getStoreConfig().freeShippingThreshold - subtotal);
   },
 
   getDiscountAmount: () => {
@@ -197,29 +196,30 @@ export const useCartStore = create<CartState>((set, get) => ({
       return 0; // Handled as free shipping code
     }
 
-    return (subtotal * discount.percentage) / 100;
+    return Math.round((subtotal * discount.percentage) / 100 * 100) / 100;
   },
 
   getShippingFee: () => {
     const option = get().shippingOption;
     const discount = get().appliedDiscount;
     const subtotal = get().getSubtotal();
+    const config = getStoreConfig();
 
     if (subtotal === 0) return 0;
     if (discount && discount.code === 'FREESHIP') return 0;
 
-    if (option === 'express') return API_CONFIG.expressShippingFee;
-    if (option === 'overnight') return API_CONFIG.overnightShippingFee;
+    if (option === 'express') return config.expressShippingFee;
+    if (option === 'overnight') return config.overnightShippingFee;
 
     // Standard
-    return subtotal >= API_CONFIG.freeShippingThreshold ? 0 : API_CONFIG.standardShippingFee;
+    return subtotal >= config.freeShippingThreshold ? 0 : config.standardShippingFee;
   },
 
   getTaxAmount: () => {
     const subtotal = get().getSubtotal();
     const discountAmount = get().getDiscountAmount();
     const taxableAmount = Math.max(0, subtotal - discountAmount);
-    return Math.round(taxableAmount * API_CONFIG.taxRate * 100) / 100;
+    return Math.round(taxableAmount * getStoreConfig().taxRate * 100) / 100;
   },
 
   getTotal: () => {
@@ -228,6 +228,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     const discount = get().getDiscountAmount();
     const shipping = get().getShippingFee();
     const tax = get().getTaxAmount();
-    return Math.max(0, subtotal - discount + shipping + tax);
+    return Math.round(Math.max(0, subtotal - discount + shipping + tax) * 100) / 100;
   },
 }));

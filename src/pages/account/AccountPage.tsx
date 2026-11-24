@@ -35,6 +35,7 @@ export const AccountPage: React.FC = () => {
   // Modals state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   // Address Form
   const [newAddress, setNewAddress] = useState<Omit<Address, 'id'>>({
@@ -129,9 +130,14 @@ export const AccountPage: React.FC = () => {
     }
 
     try {
-      await customerService.addAddress(user.id, newAddress);
+      if (editingAddressId) {
+        await customerService.updateAddress(user.id, editingAddressId, newAddress);
+      } else {
+        await customerService.addAddress(user.id, newAddress);
+      }
       await refreshUser();
       setIsAddressModalOpen(false);
+      setEditingAddressId(null);
       setNewAddress({
         firstName: user.firstName,
         lastName: user.lastName,
@@ -145,8 +151,8 @@ export const AccountPage: React.FC = () => {
         isDefault: false,
       });
       showToast({
-        title: 'Address Added',
-        message: 'New shipping address added to your profile.',
+        title: editingAddressId ? 'Address Updated' : 'Address Added',
+        message: editingAddressId ? 'Your shipping address has been updated.' : 'New shipping address added to your profile.',
         type: 'success',
       });
     } catch {
@@ -166,6 +172,34 @@ export const AccountPage: React.FC = () => {
     } catch {
       showToast({ title: 'Error', message: 'Could not delete address.', type: 'error' });
     }
+  };
+
+  const openAddressEditor = (address?: Address) => {
+    setEditingAddressId(address?.id || null);
+    setNewAddress(address ? {
+      firstName: address.firstName,
+      lastName: address.lastName,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode,
+      country: address.country,
+      phone: address.phone || '',
+      isDefault: !!address.isDefault,
+    } : {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'Pakistan',
+      phone: user.phone,
+      isDefault: false,
+    });
+    setIsAddressModalOpen(true);
   };
 
   return (
@@ -443,7 +477,7 @@ export const AccountPage: React.FC = () => {
                 <Button
                   variant="dark"
                   size="sm"
-                  onClick={() => setIsAddressModalOpen(true)}
+                  onClick={() => openAddressEditor()}
                   leftIcon={<Plus className="w-3.5 h-3.5" />}
                 >
                   Add Address
@@ -478,7 +512,14 @@ export const AccountPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-sand-200 flex justify-end">
+                    <div className="mt-6 pt-4 border-t border-sand-200 flex justify-end gap-4">
+                      <button
+                        type="button"
+                        onClick={() => openAddressEditor(addr)}
+                        className="inline-flex items-center gap-1 text-xs text-charcoal-500 hover:text-moss-900 transition-colors"
+                      >
+                        <span>Edit</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteAddress(addr.id)}
@@ -663,8 +704,8 @@ export const AccountPage: React.FC = () => {
       {/* ADD ADDRESS MODAL */}
       <Modal
         isOpen={isAddressModalOpen}
-        onClose={() => setIsAddressModalOpen(false)}
-        title="Add Shipping Address"
+        onClose={() => { setIsAddressModalOpen(false); setEditingAddressId(null); }}
+        title={editingAddressId ? 'Edit Shipping Address' : 'Add Shipping Address'}
         maxWidth="md"
       >
         <form onSubmit={handleAddAddress} className="space-y-4">
@@ -777,12 +818,12 @@ export const AccountPage: React.FC = () => {
               type="button"
               variant="outline"
               size="md"
-              onClick={() => setIsAddressModalOpen(false)}
+              onClick={() => { setIsAddressModalOpen(false); setEditingAddressId(null); }}
             >
               Cancel
             </Button>
             <Button type="submit" variant="dark" size="md">
-              Save Address
+              {editingAddressId ? 'Update Address' : 'Save Address'}
             </Button>
           </div>
         </form>

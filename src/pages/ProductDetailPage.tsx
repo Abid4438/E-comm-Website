@@ -46,6 +46,7 @@ export const ProductDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [variantError, setVariantError] = useState('');
 
   // New review form state
   const [newReviewAuthor, setNewReviewAuthor] = useState('');
@@ -67,9 +68,8 @@ export const ProductDetailPage: React.FC = () => {
         const prod = await productService.getProductBySlug(slug);
         if (prod) {
           setProduct(prod);
-          setSelectedColor(prod.colors[0]?.name || '');
-          const availableSize = prod.sizes.find((s) => s.inStock)?.name || prod.sizes[0]?.name || '';
-          setSelectedSize(availableSize);
+          setSelectedColor('');
+          setSelectedSize('');
           setSelectedImageIndex(0);
           setQuantity(1);
 
@@ -128,6 +128,11 @@ export const ProductDetailPage: React.FC = () => {
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
+    if ((product.colors.length > 0 && !selectedColor) || (product.sizes.some((size) => size.inStock) && !selectedSize)) {
+      setVariantError('Please select an available color and size before adding this item.');
+      return;
+    }
+    setVariantError('');
     addItem(product, quantity, selectedColor, selectedSize);
     openCart();
     showToast({
@@ -139,6 +144,11 @@ export const ProductDetailPage: React.FC = () => {
 
   const handleBuyNow = () => {
     if (isOutOfStock) return;
+    if ((product.colors.length > 0 && !selectedColor) || (product.sizes.some((size) => size.inStock) && !selectedSize)) {
+      setVariantError('Please select an available color and size before continuing.');
+      return;
+    }
+    setVariantError('');
     addItem(product, quantity, selectedColor, selectedSize);
     navigate('/checkout');
   };
@@ -442,7 +452,7 @@ export const ProductDetailPage: React.FC = () => {
                   <button
                     key={color.name}
                     type="button"
-                    onClick={() => setSelectedColor(color.name)}
+                    onClick={() => { setSelectedColor(color.name); setVariantError(''); }}
                     className={cn(
                       'relative h-8 w-8 rounded-full border p-0.5 transition-all focus:outline-none',
                       selectedColor === color.name
@@ -481,7 +491,7 @@ export const ProductDetailPage: React.FC = () => {
                     key={size.name}
                     type="button"
                     disabled={!size.inStock}
-                    onClick={() => setSelectedSize(size.name)}
+                    onClick={() => { setSelectedSize(size.name); setVariantError(''); }}
                     className={cn(
                       'px-4 py-2 text-xs uppercase tracking-wider border font-medium transition-all',
                       !size.inStock
@@ -500,6 +510,7 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Quantity & Add to Cart Controls */}
           <div className="mt-8 space-y-3">
+            {variantError && <p role="alert" className="text-xs text-red-700">{variantError}</p>}
             <div className="flex items-center gap-3">
               <QuantitySelector
                 quantity={quantity}

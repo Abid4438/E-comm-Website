@@ -52,8 +52,11 @@ router.post('/validate', async (req, res) => {
       return res.json({ isValid: false, message: 'This promo code has expired' });
     }
 
-    if (disc.minSpend && currentSubtotal < disc.minSpend) {
-      return res.json({ isValid: false, message: `Requires minimum order of $${disc.minSpend}` });
+    const minimumSpend = disc.minSpend ?? 0;
+    const requiresMoreThanMinimum = disc.code.toUpperCase() === 'MOSS20';
+    if (requiresMoreThanMinimum ? currentSubtotal <= minimumSpend : currentSubtotal < minimumSpend) {
+      const comparison = requiresMoreThanMinimum ? 'above' : 'at least';
+      return res.json({ isValid: false, message: `Requires an order ${comparison} ${minimumSpend}` });
     }
 
     if (disc.maxUses && disc.usageCount >= disc.maxUses) {

@@ -31,3 +31,15 @@ export const API_CONFIG = {
   expressShippingFee: 7000,
   overnightShippingFee: 11200,
 };
+
+const STORE_SETTINGS_KEY = 'moss_store_settings';
+
+export const getStoreConfig = () => {
+  try {
+    const saved = localStorage.getItem(STORE_SETTINGS_KEY);
+    if (saved) return { ...API_CONFIG, ...JSON.parse(saved) };
+  } catch {
+    // Use the defaults when browser storage is unavailable or invalid.
+  }
+  return API_CONFIG;
+};

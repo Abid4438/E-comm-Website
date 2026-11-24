@@ -2,19 +2,36 @@ import React, { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { useToastStore } from '../../store/useToastStore';
 import { Save, Database, Globe } from 'lucide-react';
+import { getStoreConfig } from '../../services/apiClient';
+
+const STORE_SETTINGS_KEY = 'moss_store_settings';
 
 export const AdminSettings: React.FC = () => {
-  const [storeName, setStoreName] = useState('MOSS Lifestyle');
-  const [supportEmail, setSupportEmail] = useState('concierge@mosslifestyle.com');
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState(28000);
-  const [taxRate, setTaxRate] = useState(18.0);
-  const [currency, setCurrency] = useState('PKR');
-  const [enableCarbonNeutral, setEnableCarbonNeutral] = useState(true);
-  const [magentoGraphQLEndpoint, setMagentoGraphQLEndpoint] = useState('https://demo.magento.com/graphql');
+  const [storeName, setStoreName] = useState(() => getStoreConfig().storeName || 'MOSS Lifestyle');
+  const [supportEmail, setSupportEmail] = useState(() => getStoreConfig().supportEmail || 'concierge@mosslifestyle.com');
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(() => getStoreConfig().freeShippingThreshold);
+  const [taxRate, setTaxRate] = useState(() => getStoreConfig().taxRate * 100);
+  const [currency, setCurrency] = useState(() => getStoreConfig().currency || 'PKR');
+  const [enableCarbonNeutral, setEnableCarbonNeutral] = useState(() => getStoreConfig().enableCarbonNeutral ?? true);
+  const [magentoGraphQLEndpoint, setMagentoGraphQLEndpoint] = useState(() => getStoreConfig().magentoGraphQLEndpoint || 'https://demo.magento.com/graphql');
   const { showToast } = useToastStore();
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      localStorage.setItem(STORE_SETTINGS_KEY, JSON.stringify({
+        storeName,
+        supportEmail,
+        freeShippingThreshold,
+        taxRate: taxRate / 100,
+        currency,
+        enableCarbonNeutral,
+        magentoGraphQLEndpoint,
+      }));
+    } catch {
+      showToast({ title: 'Settings Not Saved', message: 'Browser storage is unavailable. Please try again.', type: 'error' });
+      return;
+    }
     showToast({
       title: 'Settings Saved',
       message: 'Store configuration parameters updated.',
@@ -68,7 +85,7 @@ export const AdminSettings: React.FC = () => {
 
             <div>
               <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
-                Free Shipping Threshold ($)
+                Free Shipping Threshold ({currency === 'PKR' ? 'Rs' : currency})
               </label>
               <input
                 type="number"
@@ -100,7 +117,8 @@ export const AdminSettings: React.FC = () => {
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full bg-white border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
               >
-                <option value="PKR" selected>PKR (Rs) - Pakistani Rupee</option>
+                <option value="PKR">PKR (Rs) - Pakistani Rupee</option>
+                <option value="USD">USD ($) - US Dollar</option>
                 <option value="EUR">EUR (€) - Euro</option>
                 <option value="GBP">GBP (£) - British Pound</option>
                 <option value="JPY">JPY (¥) - Japanese Yen</option>

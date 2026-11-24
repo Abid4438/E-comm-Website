@@ -16,6 +16,7 @@ export const WishlistPage: React.FC = () => {
 
   const handleMoveToCart = (product: any) => {
     addItem(product, 1);
+    removeItem(product.id);
     openCart();
     showToast({
       title: 'Moved to Bag',

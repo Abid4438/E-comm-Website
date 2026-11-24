@@ -14,12 +14,14 @@ interface ProductCardProps {
   product: Product;
   className?: string;
   showCategory?: boolean;
+  highlightQuery?: string;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   className,
   showCategory = false,
+  highlightQuery,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name);
@@ -33,6 +35,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const hasSecondaryImage = product.images.length > 1;
   const primaryImage = product.images[0];
   const secondaryImage = hasSecondaryImage ? product.images[1] : product.images[0];
+  const productName = highlightQuery?.trim()
+    ? product.name.split(new RegExp(`(${highlightQuery.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig')).map((part, index) =>
+        part.toLowerCase() === highlightQuery.trim().toLowerCase()
+          ? <mark key={`${part}-${index}`} className="bg-gold-200 text-charcoal-900">{part}</mark>
+          : part
+      )
+    : product.name;
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -170,7 +179,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             to={`/product/${product.slug}`}
             className="font-serif text-base sm:text-lg text-charcoal-900 hover:text-moss-800 transition-colors line-clamp-1 font-normal tracking-tight"
           >
-            {product.name}
+            {productName}
           </Link>
         </div>
 

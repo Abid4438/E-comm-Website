@@ -30,15 +30,27 @@ const NAV_ITEMS = [
 ];
 
 export const AdminLayout: React.FC = () => {
-  const { user, isAuthenticated, isAdmin } = useAuthStore();
+  const { user, isAuthenticated, isAdmin, isLoading, refreshUser } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
+    void refreshUser();
+  }, [refreshUser]);
+
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || !isAdmin)) {
       navigate('/login?redirect=/admin');
     }
-  }, [isAuthenticated, isAdmin, navigate]);
+  }, [isAuthenticated, isAdmin, isLoading, navigate]);
+
+  if (isLoading || !isAuthenticated || !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F2EB] text-xs uppercase tracking-widest text-charcoal-600">
+        Checking administrator access...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F2EB] text-[#1A1A1A] flex font-sans antialiased">

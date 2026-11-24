@@ -57,6 +57,10 @@ export const OrderConfirmationPage: React.FC = () => {
     );
   }
 
+  const statusStages = ['Pending', 'Processing', 'Shipped', 'Delivered'] as const;
+  const activeStage = statusStages.indexOf(order.status as (typeof statusStages)[number]);
+  const isCancelled = order.status === 'Cancelled' || order.status === 'Refunded';
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
       <SEOHead title={`Order ${order.id} Confirmed | MOSS`} description="Your order receipt and delivery status." />
@@ -107,30 +111,31 @@ export const OrderConfirmationPage: React.FC = () => {
             <span className="text-[10px] text-charcoal-500">{formatDate(order.date)}</span>
           </div>
 
-          <div className="flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-moss-900 text-sand-50 flex items-center justify-center text-xs font-bold mb-2 animate-pulse">
+          <div className={`flex flex-col items-center ${activeStage < 1 || isCancelled ? 'opacity-40' : ''}`}>
+            <div className={`w-8 h-8 rounded-full ${activeStage >= 1 && !isCancelled ? 'bg-moss-900 text-sand-50' : 'bg-sand-300 text-charcoal-700'} flex items-center justify-center text-xs font-bold mb-2`}>
               <Package className="w-4 h-4" />
             </div>
             <span className="text-xs font-semibold text-charcoal-900">Processing</span>
             <span className="text-[10px] text-charcoal-500">In Handcraft Studio</span>
           </div>
 
-          <div className="flex flex-col items-center opacity-40">
-            <div className="w-8 h-8 rounded-full bg-sand-300 text-charcoal-700 flex items-center justify-center text-xs font-bold mb-2">
+          <div className={`flex flex-col items-center ${activeStage < 2 || isCancelled ? 'opacity-40' : ''}`}>
+            <div className={`w-8 h-8 rounded-full ${activeStage >= 2 && !isCancelled ? 'bg-moss-900 text-sand-50' : 'bg-sand-300 text-charcoal-700'} flex items-center justify-center text-xs font-bold mb-2`}>
               <Truck className="w-4 h-4" />
             </div>
             <span className="text-xs font-semibold text-charcoal-900">In Transit</span>
-            <span className="text-[10px] text-charcoal-500">DHL Express</span>
+            <span className="text-[10px] text-charcoal-500">{order.carrier || 'Carrier pending'}</span>
           </div>
 
-          <div className="flex flex-col items-center opacity-40">
-            <div className="w-8 h-8 rounded-full bg-sand-300 text-charcoal-700 flex items-center justify-center text-xs font-bold mb-2">
+          <div className={`flex flex-col items-center ${activeStage < 3 || isCancelled ? 'opacity-40' : ''}`}>
+            <div className={`w-8 h-8 rounded-full ${activeStage >= 3 && !isCancelled ? 'bg-moss-900 text-sand-50' : 'bg-sand-300 text-charcoal-700'} flex items-center justify-center text-xs font-bold mb-2`}>
               <Clock className="w-4 h-4" />
             </div>
             <span className="text-xs font-semibold text-charcoal-900">Delivered</span>
-            <span className="text-[10px] text-charcoal-500">Est. {order.estimatedDelivery}</span>
+            <span className="text-[10px] text-charcoal-500">{order.status === 'Delivered' ? 'Delivered' : order.estimatedDelivery ? `Est. ${order.estimatedDelivery}` : 'Pending'}</span>
           </div>
         </div>
+        {isCancelled && <p className="mt-4 text-center text-xs font-medium text-red-700">Order {order.status.toLowerCase()}.</p>}
       </div>
 
       {/* Order Details Breakdown */}

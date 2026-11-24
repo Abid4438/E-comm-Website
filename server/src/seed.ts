@@ -129,6 +129,10 @@ export async function seedDatabase() {
         ]
       );
     }
+    await query(
+      `UPDATE discounts SET min_spend = $1, description = $2 WHERE UPPER(code) = 'WELCOME10' AND min_spend = $3`,
+      [50, '10% off orders of 50 or more', 25000]
+    );
 
     // 5. Seed Reviews
     for (const r of INITIAL_REVIEWS) {

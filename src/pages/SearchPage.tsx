@@ -93,7 +93,7 @@ export const SearchPage: React.FC = () => {
         ) : products.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} showCategory />
+              <ProductCard key={product.id} product={product} showCategory highlightQuery={query.trim()} />
             ))}
           </div>
         ) : query ? (
@@ -102,6 +102,18 @@ export const SearchPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-charcoal-500 font-light mb-6">
               We couldn't find any objects matching "{query}". Try checking your spelling or searching for broad terms like "linen" or "tote".
             </p>
+            <div className="flex flex-wrap justify-center gap-2" aria-label="Suggested searches">
+              {['linen', 'ceramic', 'tote', 'essentials'].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => setSearchParams({ q: suggestion })}
+                  className="border border-sand-300 bg-sand-100 px-3 py-2 text-xs text-charcoal-700 hover:border-moss-800 hover:text-moss-900"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="py-20 text-center max-w-md mx-auto">

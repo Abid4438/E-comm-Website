@@ -8,7 +8,16 @@ export class MockDiscountService implements IDiscountService {
   private getStoredDiscounts(): Discount[] {
     try {
       const stored = localStorage.getItem(DISCOUNTS_KEY);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const discounts: Discount[] = JSON.parse(stored);
+        const welcomeDiscount = discounts.find((discount) => discount.code.toUpperCase() === 'WELCOME10');
+        if (welcomeDiscount?.minSpend === 25000) {
+          welcomeDiscount.minSpend = 50;
+          welcomeDiscount.description = '10% off orders of 50 or more';
+          this.saveDiscounts(discounts);
+        }
+        return discounts;
+      }
     } catch {
       // fallback
     }
@@ -45,8 +54,12 @@ export class MockDiscountService implements IDiscountService {
       return { isValid: false, message: 'This promo code has expired' };
     }
 
-    if (discount.minSpend && currentSubtotal < discount.minSpend) {
-      return { isValid: false, message: `Requires minimum order of $${discount.minSpend}` };
+    const minimumNotMet = discount.code.toUpperCase() === 'MOSS20'
+      ? currentSubtotal <= (discount.minSpend || 200)
+      : currentSubtotal < (discount.minSpend || 0);
+    if (minimumNotMet) {
+      const comparator = discount.code.toUpperCase() === 'MOSS20' ? 'above' : 'at least';
+      return { isValid: false, message: `Requires an order ${comparator} ${discount.minSpend}` };
     }
 
     if (discount.maxUses && discount.usageCount >= discount.maxUses) {
