@@ -85,6 +85,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Select a payment method currently offered by the store.' });
     }
 
+    const deliveryResult = await query<{ value: unknown }>(
+      'SELECT value FROM store_settings WHERE key = $1',
+      ['delivery_methods'],
+    );
+    const deliveryValue = deliveryResult.rows[0]?.value;
+    const savedDeliveryMethods = typeof deliveryValue === 'string' ? JSON.parse(deliveryValue) : deliveryValue;
+    const deliveryMethods = Array.isArray(savedDeliveryMethods) ? savedDeliveryMethods : [];
+    const selectedDelivery = deliveryMethods.find((method: any) => method.id === checkoutData.deliveryMethod);
+    if (!selectedDelivery) {
+      return res.status(400).json({ error: 'Select a delivery method currently offered by the store.' });
+    }
+
     const orderNumber = `${Date.now() % 100000}`.padStart(5, '0');
     const orderId = `MOS-2026-${orderNumber}`;
     const date = new Date().toISOString();
@@ -112,12 +124,7 @@ router.post('/', async (req, res) => {
 
     const paymentMethod = selectedMethod.label;
 
-    const deliveryMethod =
-      checkoutData.deliveryMethod === 'express'
-        ? 'Express Courier (usually 1-3 working days; serviceability varies)'
-        : checkoutData.deliveryMethod === 'overnight'
-        ? 'Priority Courier (usually next working day in major cities; serviceability varies)'
-        : 'Standard Pakistan Courier (usually 3-5 working days)';
+    const deliveryMethod = selectedDelivery.label;
 
     const trackingNumber = `MOSS-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
     const carrier = 'Local courier partner';

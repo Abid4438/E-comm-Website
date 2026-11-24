@@ -66,13 +66,11 @@ export const CartDrawer: React.FC = () => {
               <Button
                 variant="dark"
                 size="lg"
-                className="h-[82px] w-full !flex-col !items-start !justify-center !gap-0 !px-10 !py-5"
+                className="h-[82px] w-full !justify-between !px-10 !py-5"
                 onClick={handleCheckoutClick}
+                rightIcon={<ArrowRight className="h-4 w-4" />}
               >
-                <span className="flex flex-col items-start leading-tight">
-                  <span>Proceed to Checkout</span>
-                  <ArrowRight className="mt-0.5 w-4 h-4" />
-                </span>
+                <span className="whitespace-nowrap">Proceed to Checkout</span>
               </Button>
 
               <button

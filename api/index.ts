@@ -9,6 +9,7 @@ import customersRouter from '../server/src/routes/customers';
 import ordersRouter from '../server/src/routes/orders';
 import discountsRouter from '../server/src/routes/discounts';
 import reviewsRouter from '../server/src/routes/reviews';
+import settingsRouter from '../server/src/routes/settings';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api', customersRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/discounts', discountsRouter);
 app.use('/api/reviews', reviewsRouter);
+app.use('/api/settings', settingsRouter);
 
 let dbInitialized = false;
 

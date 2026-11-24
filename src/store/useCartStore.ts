@@ -10,7 +10,7 @@ interface CartState {
   items: CartItem[];
   isOpen: boolean;
   appliedDiscount: Discount | null;
-  shippingOption: 'standard' | 'express' | 'overnight';
+  shippingOption: string;
   orderNotes: string;
 
   // Actions
@@ -24,7 +24,7 @@ interface CartState {
   toggleCart: () => void;
   applyDiscount: (discount: Discount) => void;
   removeDiscount: () => void;
-  setShippingOption: (option: 'standard' | 'express' | 'overnight') => void;
+  setShippingOption: (option: string) => void;
   setOrderNotes: (notes: string) => void;
 
   // Getters / Computed
@@ -38,7 +38,7 @@ interface CartState {
   getQualifiesForFreeShipping: () => boolean;
 }
 
-const loadSavedCart = (): { items: CartItem[]; discount: Discount | null; shippingOption: 'standard' | 'express' | 'overnight'; orderNotes: string } => {
+const loadSavedCart = (): { items: CartItem[]; discount: Discount | null; shippingOption: string; orderNotes: string } => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -56,7 +56,7 @@ const loadSavedCart = (): { items: CartItem[]; discount: Discount | null; shippi
   return { items: [], discount: null, shippingOption: 'standard', orderNotes: '' };
 };
 
-const saveCart = (items: CartItem[], appliedDiscount: Discount | null, shippingOption: 'standard' | 'express' | 'overnight' = 'standard', orderNotes: string = '') => {
+const saveCart = (items: CartItem[], appliedDiscount: Discount | null, shippingOption: string = 'standard', orderNotes: string = '') => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, appliedDiscount, shippingOption, orderNotes }));
   } catch {

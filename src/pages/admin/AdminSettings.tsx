@@ -3,8 +3,9 @@ import { Button } from '../../components/ui/Button';
 import { useToastStore } from '../../store/useToastStore';
 import { Save, Database, Globe, Plus, Trash2, CreditCard } from 'lucide-react';
 import { getStoreConfig } from '../../services/apiClient';
-import { getPaymentMethods, savePaymentMethods } from '../../services/api/ApiStoreSettingsService';
-import { PaymentMethodOption } from '../../types/payment';
+import { formatPrice } from '../../utils/formatters';
+import { getDeliveryMethods, getPaymentMethods, saveDeliveryMethods, savePaymentMethods } from '../../services/api/ApiStoreSettingsService';
+import { DeliveryMethodOption, PaymentMethodOption } from '../../types/payment';
 
 const STORE_SETTINGS_KEY = 'moss_store_settings';
 
@@ -21,18 +22,23 @@ export const AdminSettings: React.FC = () => {
   const [magentoGraphQLEndpoint, setMagentoGraphQLEndpoint] = useState(() => getStoreConfig().magentoGraphQLEndpoint || 'https://demo.magento.com/graphql');
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [newPaymentMethod, setNewPaymentMethod] = useState('');
+  const [deliveryMethods, setDeliveryMethods] = useState<DeliveryMethodOption[]>([]);
+  const [newDeliveryMethod, setNewDeliveryMethod] = useState('');
+  const [newDeliveryTiming, setNewDeliveryTiming] = useState('');
+  const [newDeliveryFee, setNewDeliveryFee] = useState('0');
   const [isSaving, setIsSaving] = useState(false);
   const [paymentMethodsLoadFailed, setPaymentMethodsLoadFailed] = useState(false);
   const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
   const { showToast } = useToastStore();
 
   useEffect(() => {
-    getPaymentMethods().then((methods) => {
-      setPaymentMethods(methods);
+    Promise.all([getPaymentMethods(), getDeliveryMethods()]).then(([payments, deliveries]) => {
+      setPaymentMethods(payments);
+      setDeliveryMethods(deliveries);
       setPaymentMethodsLoaded(true);
     }).catch(() => {
       setPaymentMethodsLoadFailed(true);
-      showToast({ title: 'Payment Methods Unavailable', message: 'Could not load the saved payment methods from the server.', type: 'error' });
+      showToast({ title: 'Checkout Settings Unavailable', message: 'Could not load the saved delivery and payment methods from the server.', type: 'error' });
     });
   }, [showToast]);
 
@@ -43,15 +49,30 @@ export const AdminSettings: React.FC = () => {
     setNewPaymentMethod('');
   };
 
+  const handleAddDeliveryMethod = () => {
+    const label = newDeliveryMethod.trim();
+    const fee = Number(newDeliveryFee);
+    if (!label || !Number.isFinite(fee) || fee < 0 || deliveryMethods.some((method) => method.label.toLowerCase() === label.toLowerCase())) return;
+    setDeliveryMethods((methods) => [...methods, {
+      id: `delivery_${crypto.randomUUID()}`,
+      label,
+      timing: newDeliveryTiming.trim(),
+      fee,
+    }]);
+    setNewDeliveryMethod('');
+    setNewDeliveryTiming('');
+    setNewDeliveryFee('0');
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (paymentMethodsLoadFailed) {
-      showToast({ title: 'Settings Not Saved', message: 'Reload the saved payment methods before changing them.', type: 'error' });
+      showToast({ title: 'Settings Not Saved', message: 'Reload the saved delivery and payment methods before changing them.', type: 'error' });
       return;
     }
     setIsSaving(true);
     try {
-      await savePaymentMethods(paymentMethods);
+      await Promise.all([savePaymentMethods(paymentMethods), saveDeliveryMethods(deliveryMethods)]);
       localStorage.setItem(STORE_SETTINGS_KEY, JSON.stringify({
         storeName,
         supportEmail,
@@ -224,7 +245,7 @@ export const AdminSettings: React.FC = () => {
             <span>Checkout Payment Methods</span>
           </div>
           <p className="text-xs text-charcoal-600">Only the methods listed here appear at checkout. Add or remove methods, then save the configuration.</p>
-          {paymentMethodsLoadFailed && <p role="alert" className="text-xs text-red-700">Payment methods could not be loaded. Refresh this page before editing.</p>}
+          {paymentMethodsLoadFailed && <p role="alert" className="text-xs text-red-700">Checkout delivery and payment methods could not be loaded. Refresh this page before editing.</p>}
           <div className="space-y-2">
             {paymentMethods.length === 0 && !paymentMethodsLoadFailed && (
               <p className="text-xs text-charcoal-500">No payment methods added. Customers will see no payment options until you add one.</p>
@@ -265,6 +286,36 @@ export const AdminSettings: React.FC = () => {
             >
               Add Method
             </Button>
+          </div>
+        </div>
+
+        {/* Checkout Delivery Methods */}
+        <div className="p-6 sm:p-8 bg-[#FAF8F5] border border-sand-300 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 font-serif text-xl font-normal text-charcoal-900 pb-2 border-b border-sand-200">
+            <Globe className="w-5 h-5 text-moss-800" />
+            <span>Checkout Delivery Methods</span>
+          </div>
+          <p className="text-xs text-charcoal-600">These delivery choices appear at checkout. Remove or add methods, then save the configuration.</p>
+          {deliveryMethods.length === 0 && !paymentMethodsLoadFailed && (
+            <p className="text-xs text-charcoal-500">No delivery methods added. Customers will not be able to place an order until one is added.</p>
+          )}
+          <div className="space-y-2">
+            {deliveryMethods.map((method) => (
+              <div key={method.id} className="flex items-center justify-between gap-3 bg-white border border-sand-200 px-3 py-2.5">
+                <span className="text-sm text-charcoal-900">{method.label} · {method.timing || 'Timing not specified'} · {formatPrice(method.fee, currency)}</span>
+                <button type="button" onClick={() => setDeliveryMethods((methods) => methods.filter((item) => item.id !== method.id))}
+                  disabled={paymentMethodsLoadFailed} aria-label={`Remove ${method.label}`} title={`Remove ${method.label}`}
+                  className="text-red-700 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-40">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_140px_auto] gap-2">
+            <input value={newDeliveryMethod} onChange={(e) => setNewDeliveryMethod(e.target.value)} maxLength={50} placeholder="Method name" aria-label="New delivery method name" className="bg-white border border-sand-300 p-2.5 text-xs" />
+            <input value={newDeliveryTiming} onChange={(e) => setNewDeliveryTiming(e.target.value)} maxLength={100} placeholder="Delivery time (optional)" aria-label="New delivery timing" className="bg-white border border-sand-300 p-2.5 text-xs" />
+            <input type="number" min="0" max="10000000" step="1" value={newDeliveryFee} onChange={(e) => setNewDeliveryFee(e.target.value)} placeholder="Fee" aria-label="New delivery fee" className="bg-white border border-sand-300 p-2.5 text-xs" />
+            <Button type="button" variant="outline" onClick={handleAddDeliveryMethod} disabled={!newDeliveryMethod.trim() || deliveryMethods.length >= 20 || deliveryMethods.some((method) => method.label.toLowerCase() === newDeliveryMethod.trim().toLowerCase())} leftIcon={<Plus className="w-4 h-4" />}>Add Method</Button>
           </div>
         </div>
 

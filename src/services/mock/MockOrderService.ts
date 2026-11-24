@@ -86,7 +86,7 @@ export class MockOrderService implements IOrderService {
       status: 'Processing',
       paymentMethod: checkoutData.paymentMethodName || checkoutData.paymentMethod,
       paymentStatus: 'Paid',
-      deliveryMethod: checkoutData.deliveryMethod === 'express' ? 'Express Courier (usually 1-3 working days; serviceability varies)' : checkoutData.deliveryMethod === 'overnight' ? 'Priority Courier (usually next working day in major cities; serviceability varies)' : 'Standard Pakistan Courier (usually 3-5 working days)',
+      deliveryMethod: checkoutData.deliveryMethodName || (checkoutData.deliveryMethod === 'express' ? 'Express Courier (usually 1-3 working days; serviceability varies)' : checkoutData.deliveryMethod === 'overnight' ? 'Priority Courier (usually next working day in major cities; serviceability varies)' : 'Standard Pakistan Courier (usually 3-5 working days)'),
       trackingNumber: `MOSS-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
       carrier: 'Local courier partner',
       estimatedDelivery: deliveryDate.toISOString().split('T')[0],

@@ -50,7 +50,8 @@ export interface CheckoutFormData {
   district?: string;
   postalCode: string;
   country: string;
-  deliveryMethod: 'standard' | 'express' | 'overnight';
+  deliveryMethod: string;
+  deliveryMethodName?: string;
   paymentMethod: string;
   paymentMethodName?: string;
   cardNumber?: string;

@@ -28,8 +28,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
-import { getPaymentMethods } from '../services/api/ApiStoreSettingsService';
-import { PaymentMethodOption } from '../types/payment';
+import { getDeliveryMethods, getPaymentMethods } from '../services/api/ApiStoreSettingsService';
+import { DeliveryMethodOption, PaymentMethodOption } from '../types/payment';
 
 // Zod Validation Schema
 const checkoutSchema = z.object({
@@ -44,7 +44,7 @@ const checkoutSchema = z.object({
   district: z.string().optional(),
   postalCode: z.string().regex(/^[\da-zA-Z][\da-zA-Z\s-]{1,9}$/, 'Enter a valid postal code'),
   country: z.string().min(2, 'Country is required'),
-  deliveryMethod: z.enum(['standard', 'express', 'overnight']),
+  deliveryMethod: z.string().min(1, 'Select a delivery method'),
   paymentMethod: z.string().min(1, 'Select a payment method'),
   paymentMethodName: z.string().optional(),
   notes: z.string().optional(),
@@ -70,7 +70,6 @@ export const CheckoutPage: React.FC = () => {
     getShippingFee,
     getDiscountAmount,
     getTaxAmount,
-    getTotal,
   } = useCartStore();
 
   const { user } = useAuthStore();
@@ -79,6 +78,7 @@ export const CheckoutPage: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [deliveryMethods, setDeliveryMethods] = useState<DeliveryMethodOption[]>([]);
   const submitLock = useRef(false);
   const [promoInput, setPromoInput] = useState('');
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
@@ -130,29 +130,46 @@ export const CheckoutPage: React.FC = () => {
 
   useEffect(() => {
     let isCurrent = true;
-    getPaymentMethods().then((methods) => {
-      if (!isCurrent) return;
-      setPaymentMethods(methods);
-      const currentMethod = getValues('paymentMethod');
-      const activeMethod = methods.find((method) => method.id === currentMethod) || methods[0];
-      if (activeMethod) {
-        setValue('paymentMethod', activeMethod.id);
-        setValue('paymentMethodName', activeMethod.label);
-      }
-    }).catch(() => {
-      // Leave payment unavailable until the admin-configured methods can be loaded.
-    });
-    return () => { isCurrent = false; };
+    const loadCheckoutOptions = () => {
+      Promise.all([getPaymentMethods(), getDeliveryMethods()]).then(([methods, deliveryOptions]) => {
+        if (!isCurrent) return;
+        setPaymentMethods(methods);
+        setDeliveryMethods(deliveryOptions);
+        const currentMethod = getValues('paymentMethod');
+        const activeMethod = methods.find((method) => method.id === currentMethod) || methods[0];
+        if (activeMethod) {
+          setValue('paymentMethod', activeMethod.id);
+          setValue('paymentMethodName', activeMethod.label);
+        }
+        const currentDelivery = getValues('deliveryMethod');
+        const activeDelivery = deliveryOptions.find((method) => method.id === currentDelivery) || deliveryOptions[0];
+        if (activeDelivery) setValue('deliveryMethod', activeDelivery.id);
+      }).catch(() => {
+        // Leave checkout unavailable until the admin-configured methods can be loaded.
+      });
+    };
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') loadCheckoutOptions();
+    };
+    loadCheckoutOptions();
+    window.addEventListener('focus', refreshOnFocus);
+    return () => {
+      isCurrent = false;
+      window.removeEventListener('focus', refreshOnFocus);
+    };
   }, []);
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
-  const shippingFee = getShippingFee();
-  const taxAmount = getTaxAmount();
-  const total = getTotal();
   const storeConfig = getStoreConfig();
+  const selectedDeliveryOption = deliveryMethods.find((method) => method.id === selectedDelivery);
+  const shippingFee = selectedDeliveryOption
+    ? (selectedDeliveryOption.id === 'standard' && subtotal >= storeConfig.freeShippingThreshold ? 0 : selectedDeliveryOption.fee)
+    : getShippingFee();
+  const taxAmount = getTaxAmount();
+  const total = Math.round(Math.max(0, subtotal - discountAmount + shippingFee + taxAmount) * 100) / 100;
 
-  const handleDeliveryChange = (method: 'standard' | 'express' | 'overnight') => {
+  const handleDeliveryChange = (method: string) => {
     setValue('deliveryMethod', method);
     setShippingOption(method);
   };
@@ -206,6 +223,7 @@ export const CheckoutPage: React.FC = () => {
     try {
       const checkoutData: CheckoutFormData = {
         ...data,
+        deliveryMethodName: deliveryMethods.find((method) => method.id === data.deliveryMethod)?.label,
         discountCode: appliedDiscount?.code,
       };
 
@@ -547,29 +565,15 @@ export const CheckoutPage: React.FC = () => {
             </h3>
 
             <div className="space-y-3">
-              {[
-                {
-                  id: 'standard',
-                  name: 'Standard Pakistan Courier',
-                  timing: 'Usually 3–5 working days across Pakistan',
-                  price: subtotal >= storeConfig.freeShippingThreshold ? 'Free' : formatPrice(storeConfig.standardShippingFee, storeConfig.currency),
-                },
-                {
-                  id: 'express',
-                  name: 'Express Courier',
-                  timing: 'Usually 1–3 working days in serviceable areas',
-                  price: formatPrice(storeConfig.expressShippingFee, storeConfig.currency),
-                },
-                {
-                  id: 'overnight',
-                  name: 'Priority Courier',
-                  timing: 'Usually next working day in major cities; serviceability varies',
-                  price: formatPrice(storeConfig.overnightShippingFee, storeConfig.currency),
-                },
-              ].map((opt) => (
+              {deliveryMethods.length === 0 && (
+                <p role="status" className="border border-sand-300 bg-[#FAF8F5] p-4 text-xs text-charcoal-600">
+                  No delivery methods are currently available. Please contact the store.
+                </p>
+              )}
+              {deliveryMethods.map((opt) => (
                 <label
                   key={opt.id}
-                  onClick={() => handleDeliveryChange(opt.id as any)}
+                  onClick={() => handleDeliveryChange(opt.id)}
                   className={cn(
                     'flex items-center justify-between p-4 border cursor-pointer transition-all',
                     selectedDelivery === opt.id
@@ -582,17 +586,17 @@ export const CheckoutPage: React.FC = () => {
                       type="radio"
                       value={opt.id}
                       checked={selectedDelivery === opt.id}
-                      onChange={() => handleDeliveryChange(opt.id as any)}
+                      onChange={() => handleDeliveryChange(opt.id)}
                       className="text-moss-900 focus:ring-moss-900"
                     />
                     <div>
                       <span className="font-medium text-xs text-charcoal-900 block">
-                        {opt.name}
+                        {opt.label}
                       </span>
                       <span className="text-[11px] text-charcoal-500">{opt.timing}</span>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-charcoal-900">{opt.price}</span>
+                  <span className="text-xs font-semibold text-charcoal-900">{opt.id === 'standard' && subtotal >= storeConfig.freeShippingThreshold ? 'Free' : formatPrice(opt.fee, storeConfig.currency)}</span>
                 </label>
               ))}
             </div>
@@ -749,7 +753,7 @@ export const CheckoutPage: React.FC = () => {
                 size="lg"
                 className="w-full text-sm font-semibold"
                 isLoading={isSubmitting}
-                disabled={paymentMethods.length === 0}
+                disabled={paymentMethods.length === 0 || deliveryMethods.length === 0}
               >
                 PLACE ORDER · {formatPrice(total)}
               </Button>
