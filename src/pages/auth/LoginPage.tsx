@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
+import { PasswordInput } from '../../components/ui/PasswordInput';
 import { SEOHead } from '../../components/ui/SEOHead';
 import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
 import { isGoogleAuthEnabled } from '../../config/auth';
@@ -147,7 +148,7 @@ export const LoginPage: React.FC = () => {
                 Forgot?
               </Link>
             </div>
-            <input
+            <PasswordInput
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

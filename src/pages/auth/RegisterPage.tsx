@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToastStore } from '../../store/useToastStore';
 import { Button } from '../../components/ui/Button';
+import { PasswordInput } from '../../components/ui/PasswordInput';
 import { SEOHead } from '../../components/ui/SEOHead';
 import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton';
 import { isGoogleAuthEnabled } from '../../config/auth';
@@ -150,7 +151,7 @@ export const RegisterPage: React.FC = () => {
             <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
               Create Password
             </label>
-            <input
+            <PasswordInput
               type="password"
               required
               value={password}
@@ -162,7 +163,7 @@ export const RegisterPage: React.FC = () => {
 
           <div>
             <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">Confirm Password</label>
-            <input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900" />
+            <PasswordInput type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" />
           </div>
 
           <div className="pt-2">

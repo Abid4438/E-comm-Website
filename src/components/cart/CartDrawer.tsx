@@ -42,7 +42,7 @@ export const CartDrawer: React.FC = () => {
       isOpen={isOpen}
       onClose={closeCart}
       position="right"
-      width="md"
+      width="xl"
       title={`Shopping Bag (${items.reduce((s, i) => s + i.quantity, 0)})`}
       footer={
         items.length > 0 ? (
@@ -66,11 +66,13 @@ export const CartDrawer: React.FC = () => {
               <Button
                 variant="dark"
                 size="lg"
-                className="w-full justify-between"
+                className="h-[82px] w-full !flex-col !items-start !justify-center !gap-0 !px-10 !py-5"
                 onClick={handleCheckoutClick}
               >
-                <span>Proceed to Checkout</span>
-                <ArrowRight className="w-4 h-4" />
+                <span className="flex flex-col items-start leading-tight">
+                  <span>Proceed to Checkout</span>
+                  <ArrowRight className="mt-0.5 w-4 h-4" />
+                </span>
               </Button>
 
               <button
@@ -139,11 +141,11 @@ export const CartDrawer: React.FC = () => {
       ) : (
         <div className="divide-y divide-sand-200">
           {items.map((item) => (
-            <div key={item.id} className="py-4 flex gap-4">
+            <div key={item.id} className="py-6 flex gap-4">
               <Link
                 to={`/product/${item.product.slug}`}
                 onClick={closeCart}
-                className="w-20 h-24 bg-sand-200 shrink-0 border border-sand-300 overflow-hidden"
+                className="w-[100px] h-[120px] bg-sand-200 shrink-0 border border-sand-300 overflow-hidden"
               >
                 <img
                   src={item.product.images[0]}
@@ -158,7 +160,7 @@ export const CartDrawer: React.FC = () => {
                     <Link
                       to={`/product/${item.product.slug}`}
                       onClick={closeCart}
-                      className="font-serif text-base text-charcoal-900 hover:text-moss-900 truncate font-normal leading-tight"
+                      className="font-serif text-lg text-charcoal-900 hover:text-moss-900 truncate font-normal leading-tight"
                     >
                       {item.product.name}
                     </Link>
