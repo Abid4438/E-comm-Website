@@ -2,6 +2,7 @@ import { IOrderService } from '../interfaces/IOrderService';
 import { Order, OrderStatus, CheckoutFormData } from '../../types/order';
 import { CartItem } from '../../types/cart';
 import { MockOrderService } from '../mock/MockOrderService';
+import { getAuthHeaders, getJsonAuthHeaders } from './auth';
 
 const API_BASE = '/api/orders';
 const mockOrderService = new MockOrderService();
@@ -9,7 +10,7 @@ const mockOrderService = new MockOrderService();
 export class ApiOrderService implements IOrderService {
   async getOrders(): Promise<Order[]> {
     try {
-      const res = await fetch(API_BASE);
+      const res = await fetch(API_BASE, { headers: getAuthHeaders() });
       if (res.ok) return await res.json();
     } catch {
       // fallback
@@ -30,7 +31,7 @@ export class ApiOrderService implements IOrderService {
 
   async getCustomerOrders(customerId: string): Promise<Order[]> {
     try {
-      const res = await fetch(`${API_BASE}/customer/${customerId}`);
+      const res = await fetch(`${API_BASE}/customer/${customerId}`, { headers: getAuthHeaders() });
       if (res.ok) return await res.json();
     } catch {
       // fallback
@@ -46,7 +47,7 @@ export class ApiOrderService implements IOrderService {
     try {
       const res = await fetch(API_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify({ checkoutData, items, totals }),
       });
       if (res.ok) return await res.json();
@@ -60,7 +61,7 @@ export class ApiOrderService implements IOrderService {
     try {
       const res = await fetch(`${API_BASE}/${id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify({ status, trackingNumber, carrier }),
       });
       if (res.ok) return await res.json();
@@ -74,6 +75,7 @@ export class ApiOrderService implements IOrderService {
     try {
       const res = await fetch(`${API_BASE}/${id}/cancel`, {
         method: 'PUT',
+        headers: getAuthHeaders(),
       });
       if (res.ok) return await res.json();
     } catch {

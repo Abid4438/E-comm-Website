@@ -14,6 +14,13 @@ import { orderService, discountService } from '../services/apiClient';
 import { formatPrice } from '../utils/formatters';
 import { CheckoutFormData } from '../types/order';
 import {
+  addressCountries,
+  addressLocations,
+  getPakistanCities,
+  getPakistanDistricts,
+  pakistanProvinces,
+} from '../data/addressLocations';
+import {
   CreditCard,
   Lock,
   ShieldCheck,
@@ -33,6 +40,7 @@ const checkoutSchema = z.object({
   addressLine2: z.string().optional(),
   city: z.string().min(2, 'City is required'),
   state: z.string().min(2, 'State / Province is required'),
+  district: z.string().optional(),
   postalCode: z.string().regex(/^[\da-zA-Z][\da-zA-Z\s-]{1,9}$/, 'Enter a valid postal code'),
   country: z.string().min(2, 'Country is required'),
   deliveryMethod: z.enum(['standard', 'express', 'overnight']),
@@ -43,6 +51,9 @@ const checkoutSchema = z.object({
   cardName: z.string().optional(),
   notes: z.string().optional(),
 }).superRefine((data, context) => {
+  if (data.country === 'Pakistan' && !data.district) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['district'], message: 'District is required' });
+  }
   if (data.paymentMethod !== 'credit_card') return;
 
   const cardNumber = (data.cardNumber || '').replace(/\D/g, '');
@@ -133,6 +144,7 @@ export const CheckoutPage: React.FC = () => {
       addressLine2: defaultAddress?.addressLine2 || '',
       city: defaultAddress?.city || '',
       state: defaultAddress?.state || '',
+      district: defaultAddress?.district || '',
       postalCode: defaultAddress?.postalCode || '',
       country: defaultAddress?.country || 'Pakistan',
       deliveryMethod: shippingOption || 'standard',
@@ -147,6 +159,17 @@ export const CheckoutPage: React.FC = () => {
 
   const selectedDelivery = watch('deliveryMethod');
   const selectedPayment = watch('paymentMethod');
+  const selectedCountry = watch('country');
+  const selectedState = watch('state');
+  const selectedDistrict = watch('district') || '';
+  const isPakistanAddress = selectedCountry === 'Pakistan';
+  const availableStates = isPakistanAddress
+    ? pakistanProvinces.map((province) => province.name.en)
+    : Object.keys(addressLocations[selectedCountry] || {});
+  const availableDistricts = isPakistanAddress ? getPakistanDistricts(selectedState) : [];
+  const availableCities = isPakistanAddress
+    ? getPakistanCities(selectedState, selectedDistrict)
+    : addressLocations[selectedCountry]?.[selectedState] || [];
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
@@ -436,40 +459,88 @@ export const CheckoutPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
-                  City *
+                  Country *
                 </label>
-                <input
-                  type="text"
-                  {...register('city')}
+                <select
+                  {...register('country', {
+                    onChange: () => {
+                      setValue('state', '', { shouldValidate: true });
+                      setValue('district', '', { shouldValidate: true });
+                      setValue('city', '', { shouldValidate: true });
+                    },
+                  })}
                   className={cn(
                     'w-full bg-[#FAF8F5] border p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900',
-                    errors.city ? 'border-red-500' : 'border-sand-300'
+                    errors.country ? 'border-red-500' : 'border-sand-300'
                   )}
-                />
-                {errors.city && (
-                  <span className="text-[11px] text-red-600 mt-1 block">
-                    {errors.city.message}
-                  </span>
-                )}
+                >
+                  <option value="">Select a country</option>
+                  {addressCountries.map((country) => <option key={country} value={country}>{country}</option>)}
+                </select>
+                {errors.country && <span className="text-[11px] text-red-600 mt-1 block">{errors.country.message}</span>}
               </div>
 
               <div>
                 <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
                   State / Province *
                 </label>
-                <input
-                  type="text"
-                  {...register('state')}
+                <select
+                  {...register('state', {
+                    onChange: () => {
+                      setValue('district', '', { shouldValidate: true });
+                      setValue('city', '', { shouldValidate: true });
+                    },
+                  })}
+                  disabled={!selectedCountry || availableStates.length === 0}
                   className={cn(
-                    'w-full bg-[#FAF8F5] border p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900',
+                    'w-full bg-[#FAF8F5] border p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900 disabled:opacity-60',
                     errors.state ? 'border-red-500' : 'border-sand-300'
                   )}
-                />
-                {errors.state && (
-                  <span className="text-[11px] text-red-600 mt-1 block">
-                    {errors.state.message}
-                  </span>
-                )}
+                >
+                  <option value="">Select a state / province</option>
+                  {availableStates.map((state) => <option key={state} value={state}>{state}</option>)}
+                </select>
+                {errors.state && <span className="text-[11px] text-red-600 mt-1 block">{errors.state.message}</span>}
+              </div>
+
+              {isPakistanAddress && (
+                <div>
+                  <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                    District *
+                  </label>
+                  <select
+                    {...register('district', { onChange: () => setValue('city', '', { shouldValidate: true }) })}
+                    disabled={!selectedState || availableDistricts.length === 0}
+                    className={cn(
+                      'w-full bg-[#FAF8F5] border p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900 disabled:opacity-60',
+                      errors.district ? 'border-red-500' : 'border-sand-300'
+                    )}
+                  >
+                    <option value="">Select a district</option>
+                    {availableDistricts.map((district) => (
+                      <option key={district.id} value={district.name.en}>{district.name.en}</option>
+                    ))}
+                  </select>
+                  {errors.district && <span className="text-[11px] text-red-600 mt-1 block">{errors.district.message}</span>}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                  {isPakistanAddress ? 'City / Locality *' : 'City *'}
+                </label>
+                <select
+                  {...register('city')}
+                  disabled={!(isPakistanAddress ? selectedDistrict : selectedState) || availableCities.length === 0}
+                  className={cn(
+                    'w-full bg-[#FAF8F5] border p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900 disabled:opacity-60',
+                    errors.city ? 'border-red-500' : 'border-sand-300'
+                  )}
+                >
+                  <option value="">Select a {isPakistanAddress ? 'city / locality' : 'city'}</option>
+                  {availableCities.map((city) => <option key={city} value={city}>{city}</option>)}
+                </select>
+                {errors.city && <span className="text-[11px] text-red-600 mt-1 block">{errors.city.message}</span>}
               </div>
 
               <div>
@@ -491,24 +562,6 @@ export const CheckoutPage: React.FC = () => {
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
-                  Country *
-                </label>
-                <select
-                  {...register('country')}
-                  className="w-full bg-[#FAF8F5] border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
-                >
-                <option value="Pakistan">Pakistan</option>
-                <option value="United States">United States</option>
-                <option value="Canada">Canada</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="France">France</option>
-                  <option value="Germany">Germany</option>
-                  <option value="Japan">Japan</option>
-                  <option value="Australia">Australia</option>
-                </select>
-              </div>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db';
+import { authenticateUser, requireAdmin, requireSelfOrAdmin } from '../middleware/auth';
 
 const router = Router();
 
@@ -31,7 +32,7 @@ function formatOrder(row: any) {
 }
 
 // GET /api/orders
-router.get('/', async (_req, res) => {
+router.get('/', authenticateUser, requireAdmin, async (_req, res) => {
   try {
     const result = await query(`SELECT * FROM orders ORDER BY date DESC`);
     res.json(result.rows.map(formatOrder));
@@ -41,7 +42,7 @@ router.get('/', async (_req, res) => {
 });
 
 // GET /api/orders/customer/:customerId
-router.get('/customer/:customerId', async (req, res) => {
+router.get('/customer/:customerId', authenticateUser, requireSelfOrAdmin('customerId'), async (req, res) => {
   try {
     const cid = req.params.customerId;
     const result = await query(
@@ -90,6 +91,7 @@ router.post('/', async (req, res) => {
       addressLine2: checkoutData.addressLine2 || '',
       city: checkoutData.city,
       state: checkoutData.state,
+      district: checkoutData.district || '',
       postalCode: checkoutData.postalCode,
       country: checkoutData.country,
       phone: checkoutData.phone,
@@ -179,7 +181,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/orders/:id/status
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const { status, trackingNumber, carrier } = req.body;
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
@@ -208,7 +210,7 @@ router.put('/:id/status', async (req, res) => {
 });
 
 // PUT /api/orders/:id/cancel
-router.put('/:id/cancel', async (req, res) => {
+router.put('/:id/cancel', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const existing = await query(`SELECT * FROM orders WHERE LOWER(id) = LOWER($1)`, [req.params.id]);
     if (existing.rows.length === 0) {

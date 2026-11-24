@@ -1,6 +1,7 @@
 import { ICategoryService } from '../interfaces/ICategoryService';
 import { Category } from '../../types/category';
 import { MockCategoryService } from '../mock/MockCategoryService';
+import { getAuthHeaders, getJsonAuthHeaders } from './auth';
 
 const API_BASE = '/api/categories';
 const mockCategoryService = new MockCategoryService();
@@ -31,7 +32,7 @@ export class ApiCategoryService implements ICategoryService {
     try {
       const res = await fetch(API_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify(category),
       });
       if (res.ok) return await res.json();
@@ -45,7 +46,7 @@ export class ApiCategoryService implements ICategoryService {
     try {
       const res = await fetch(`${API_BASE}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify(updates),
       });
       if (res.ok) return await res.json();
@@ -59,6 +60,7 @@ export class ApiCategoryService implements ICategoryService {
     try {
       const res = await fetch(`${API_BASE}/${id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       if (res.ok) return true;
     } catch {

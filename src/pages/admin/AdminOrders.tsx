@@ -306,7 +306,7 @@ export const AdminOrders: React.FC = () => {
                 </p>
                 <p>{selectedOrder.shippingAddress.addressLine1}</p>
                 <p>
-                  {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
+                  {selectedOrder.shippingAddress.city}{selectedOrder.shippingAddress.district ? `, ${selectedOrder.shippingAddress.district}` : ''}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
                 </p>
                 <p>{selectedOrder.shippingAddress.country}</p>
               </div>

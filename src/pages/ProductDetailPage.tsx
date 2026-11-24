@@ -68,8 +68,8 @@ export const ProductDetailPage: React.FC = () => {
         const prod = await productService.getProductBySlug(slug);
         if (prod) {
           setProduct(prod);
-          setSelectedColor('');
-          setSelectedSize('');
+          setSelectedColor(prod.colors.find((color) => color.inStock)?.name || '');
+          setSelectedSize(prod.sizes.find((size) => size.inStock)?.name || '');
           setSelectedImageIndex(0);
           setQuantity(1);
 

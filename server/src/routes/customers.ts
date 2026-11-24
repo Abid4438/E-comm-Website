@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { authenticateUser, requireAdmin, requireSelfOrAdmin } from '../middleware/auth';
 function generateToken(): string { return crypto.randomBytes(32).toString('hex'); }
 function hashToken(token: string): string { return crypto.createHash('sha256').update(token).digest('hex'); }
 
@@ -214,7 +215,7 @@ router.get('/customers/me', async (req, res) => {
 });
 
 // GET /api/customers (Admin list)
-router.get('/customers', async (_req, res) => {
+router.get('/customers', authenticateUser, requireAdmin, async (_req, res) => {
   try {
     const result = await query(`SELECT * FROM users ORDER BY registered_at DESC`);
     const customers = await Promise.all(result.rows.map(formatCustomer));
@@ -225,7 +226,7 @@ router.get('/customers', async (_req, res) => {
 });
 
 // GET /api/customers/:id
-router.get('/customers/:id', async (req, res) => {
+router.get('/customers/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const result = await query(`SELECT * FROM users WHERE id = $1`, [req.params.id]);
     if (result.rows.length === 0) {
@@ -239,7 +240,7 @@ router.get('/customers/:id', async (req, res) => {
 });
 
 // PUT /api/customers/:id
-router.put('/customers/:id', async (req, res) => {
+router.put('/customers/:id', authenticateUser, requireSelfOrAdmin(), async (req, res) => {
   try {
     const id = req.params.id;
     const u = req.body;
@@ -275,7 +276,7 @@ router.put('/customers/:id', async (req, res) => {
 });
 
 // POST /api/customers/:id/addresses
-router.post('/customers/:id/addresses', async (req, res) => {
+router.post('/customers/:id/addresses', authenticateUser, requireSelfOrAdmin(), async (req, res) => {
   try {
     const customerId = req.params.id;
     const a = req.body;
@@ -319,7 +320,7 @@ router.post('/customers/:id/addresses', async (req, res) => {
 });
 
 // PUT /api/customers/:id/addresses/:addressId
-router.put('/customers/:id/addresses/:addressId', async (req, res) => {
+router.put('/customers/:id/addresses/:addressId', authenticateUser, requireSelfOrAdmin(), async (req, res) => {
   try {
     const { id: customerId, addressId } = req.params;
     const a = req.body;
@@ -366,7 +367,7 @@ router.put('/customers/:id/addresses/:addressId', async (req, res) => {
 });
 
 // DELETE /api/customers/:id/addresses/:addressId
-router.delete('/customers/:id/addresses/:addressId', async (req, res) => {
+router.delete('/customers/:id/addresses/:addressId', authenticateUser, requireSelfOrAdmin(), async (req, res) => {
   try {
     const { id: customerId, addressId } = req.params;
     const result = await query(`DELETE FROM addresses WHERE id = $1 AND user_id = $2`, [addressId, customerId]);

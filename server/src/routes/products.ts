@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db';
+import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
@@ -192,7 +193,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/products (Admin Create)
-router.post('/', async (req, res) => {
+router.post('/', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const p = req.body;
     const id = `prod-${Date.now()}`;
@@ -247,7 +248,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/products/:id (Admin Update)
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const p = req.body;
@@ -306,7 +307,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/products/:id (Admin Delete)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const result = await query(`DELETE FROM products WHERE id = $1`, [req.params.id]);
     if (result.rowCount === 0) {

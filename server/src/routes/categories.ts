@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db';
+import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.get('/slug/:slug', async (req, res) => {
 });
 
 // POST /api/categories
-router.post('/', async (req, res) => {
+router.post('/', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const c = req.body;
     const id = `cat-${Date.now()}`;
@@ -59,7 +60,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/categories/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const c = req.body;
@@ -95,7 +96,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/categories/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const result = await query(`DELETE FROM categories WHERE id = $1`, [req.params.id]);
     if (result.rowCount === 0) {

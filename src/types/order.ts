@@ -47,6 +47,7 @@ export interface CheckoutFormData {
   addressLine2?: string;
   city: string;
   state: string;
+  district?: string;
   postalCode: string;
   country: string;
   deliveryMethod: 'standard' | 'express' | 'overnight';

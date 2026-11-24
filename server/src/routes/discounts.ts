@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db';
+import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ function formatDiscount(row: any) {
 }
 
 // GET /api/discounts
-router.get('/', async (_req, res) => {
+router.get('/', authenticateUser, requireAdmin, async (_req, res) => {
   try {
     const result = await query(`SELECT * FROM discounts ORDER BY expires_at DESC`);
     res.json(result.rows.map(formatDiscount));
@@ -82,7 +83,7 @@ router.post('/apply', async (req, res) => {
 });
 
 // POST /api/discounts (Create)
-router.post('/', async (req, res) => {
+router.post('/', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const d = req.body;
     const id = `disc-${Date.now()}`;
@@ -109,7 +110,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/discounts/:id (Update)
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const d = req.body;
@@ -144,7 +145,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/discounts/:id (Delete)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const result = await query(`DELETE FROM discounts WHERE id = $1`, [req.params.id]);
     if (result.rowCount === 0) {

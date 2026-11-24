@@ -1,6 +1,7 @@
 import { IDiscountService } from '../interfaces/IDiscountService';
 import { Discount } from '../../types/discount';
 import { MockDiscountService } from '../mock/MockDiscountService';
+import { getAuthHeaders, getJsonAuthHeaders } from './auth';
 
 const API_BASE = '/api/discounts';
 const mockDiscountService = new MockDiscountService();
@@ -8,7 +9,7 @@ const mockDiscountService = new MockDiscountService();
 export class ApiDiscountService implements IDiscountService {
   async getDiscounts(): Promise<Discount[]> {
     try {
-      const res = await fetch(API_BASE);
+      const res = await fetch(API_BASE, { headers: getAuthHeaders() });
       if (res.ok) return await res.json();
     } catch {
       // fallback
@@ -20,7 +21,7 @@ export class ApiDiscountService implements IDiscountService {
     try {
       const res = await fetch(`${API_BASE}/validate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify({ code, currentSubtotal }),
       });
       if (res.ok) return await res.json();
@@ -34,7 +35,7 @@ export class ApiDiscountService implements IDiscountService {
     try {
       const res = await fetch(API_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify(discount),
       });
       if (res.ok) return await res.json();
@@ -48,7 +49,7 @@ export class ApiDiscountService implements IDiscountService {
     try {
       const res = await fetch(`${API_BASE}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify(updates),
       });
       if (res.ok) return await res.json();
@@ -62,6 +63,7 @@ export class ApiDiscountService implements IDiscountService {
     try {
       const res = await fetch(`${API_BASE}/${id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       if (res.ok) return true;
     } catch {

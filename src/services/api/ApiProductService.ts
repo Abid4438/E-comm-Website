@@ -1,6 +1,7 @@
 import { IProductService } from '../interfaces/IProductService';
 import { Product, ProductFilterOptions } from '../../types/product';
 import { MockProductService } from '../mock/MockProductService';
+import { getAuthHeaders, getJsonAuthHeaders } from './auth';
 
 const API_BASE = '/api/products';
 const mockProductService = new MockProductService();
@@ -98,7 +99,7 @@ export class ApiProductService implements IProductService {
     try {
       const res = await fetch(API_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify(product),
       });
       if (res.ok) return await res.json();
@@ -112,7 +113,7 @@ export class ApiProductService implements IProductService {
     try {
       const res = await fetch(`${API_BASE}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getJsonAuthHeaders(),
         body: JSON.stringify(updates),
       });
       if (res.ok) return await res.json();
@@ -126,6 +127,7 @@ export class ApiProductService implements IProductService {
     try {
       const res = await fetch(`${API_BASE}/${id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       if (res.ok) return true;
     } catch {

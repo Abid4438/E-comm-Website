@@ -186,7 +186,7 @@ export const OrderConfirmationPage: React.FC = () => {
               <p>{order.shippingAddress.addressLine1}</p>
               {order.shippingAddress.addressLine2 && <p>{order.shippingAddress.addressLine2}</p>}
               <p>
-                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                {order.shippingAddress.city}{order.shippingAddress.district ? `, ${order.shippingAddress.district}` : ''}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
               </p>
               <p>{order.shippingAddress.country}</p>
               <p className="mt-1 text-charcoal-500">{order.shippingAddress.phone}</p>
