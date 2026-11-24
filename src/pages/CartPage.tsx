@@ -7,7 +7,7 @@ import { SEOHead } from '../components/ui/SEOHead';
 import { useCartStore } from '../store/useCartStore';
 import { useToastStore } from '../store/useToastStore';
 import { formatPrice } from '../utils/formatters';
-import { discountService, API_CONFIG } from '../services/apiClient';
+import { discountService, getStoreConfig } from '../services/apiClient';
 import { Trash2, ArrowRight, ShoppingBag, ShieldCheck, Tag, X, Truck } from 'lucide-react';
 
 export const CartPage: React.FC = () => {
@@ -42,7 +42,7 @@ export const CartPage: React.FC = () => {
   const total = getTotal();
   const amountUntilFree = getAmountUntilFreeShipping();
   const qualifiesForFree = getQualifiesForFreeShipping();
-  const progressPercent = Math.min(100, (subtotal / API_CONFIG.freeShippingThreshold) * 100);
+  const progressPercent = Math.min(100, (subtotal / getStoreConfig().freeShippingThreshold) * 100);
 
   const handleApplyPromo = async (e: React.FormEvent) => {
     e.preventDefault();

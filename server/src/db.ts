@@ -80,6 +80,14 @@ export async function query<T = any>(sql: string, params: any[] = []): Promise<D
 export async function initDB() {
   await getDBClient();
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS store_settings (
+      key VARCHAR(100) PRIMARY KEY,
+      value JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Create Users Table
   await query(`
     CREATE TABLE IF NOT EXISTS users (

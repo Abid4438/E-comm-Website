@@ -47,6 +47,13 @@ export class MockOrderService implements IOrderService {
     const orders = this.getStoredOrders();
     const orderNumber = `${Date.now() % 100000}`.padStart(5, '0');
     const orderId = `MOS-2026-${orderNumber}`;
+    const deliveryDate = new Date();
+    const deliveryWorkingDays = checkoutData.deliveryMethod === 'overnight' ? 1 : checkoutData.deliveryMethod === 'express' ? 3 : 5;
+    let daysAdded = 0;
+    while (daysAdded < deliveryWorkingDays) {
+      deliveryDate.setDate(deliveryDate.getDate() + 1);
+      if (deliveryDate.getDay() !== 0 && deliveryDate.getDay() !== 6) daysAdded += 1;
+    }
 
     const newOrder: Order = {
       id: orderId,
@@ -77,12 +84,12 @@ export class MockOrderService implements IOrderService {
       discountCode: checkoutData.discountCode,
       total: totals.total,
       status: 'Processing',
-      paymentMethod: checkoutData.paymentMethod === 'apple_pay' ? 'Apple Pay' : checkoutData.paymentMethod === 'klarna' ? 'Klarna' : 'Credit Card',
+      paymentMethod: checkoutData.paymentMethodName || checkoutData.paymentMethod,
       paymentStatus: 'Paid',
-      deliveryMethod: checkoutData.deliveryMethod === 'express' ? 'Express Courier (1-2 business days)' : checkoutData.deliveryMethod === 'overnight' ? 'Overnight Priority' : 'Standard Ground (3-5 business days)',
+      deliveryMethod: checkoutData.deliveryMethod === 'express' ? 'Express Courier (usually 1-3 working days; serviceability varies)' : checkoutData.deliveryMethod === 'overnight' ? 'Priority Courier (usually next working day in major cities; serviceability varies)' : 'Standard Pakistan Courier (usually 3-5 working days)',
       trackingNumber: `MOSS-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-      carrier: 'DHL Express',
-      estimatedDelivery: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      carrier: 'Local courier partner',
+      estimatedDelivery: deliveryDate.toISOString().split('T')[0],
       notes: checkoutData.notes,
     };
 

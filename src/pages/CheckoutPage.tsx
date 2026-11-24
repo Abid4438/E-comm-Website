@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +7,7 @@ import { Breadcrumbs } from '../components/ui/Breadcrumbs';
 import { Button } from '../components/ui/Button';
 import { SEOHead } from '../components/ui/SEOHead';
 import { useCartStore } from '../store/useCartStore';
-import { productService } from '../services/apiClient';
+import { getStoreConfig, productService } from '../services/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { orderService, discountService } from '../services/apiClient';
@@ -21,14 +21,15 @@ import {
   pakistanProvinces,
 } from '../data/addressLocations';
 import {
-  CreditCard,
   Lock,
   ShieldCheck,
   Tag,
-  CheckCircle2,
   Info,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { getPaymentMethods } from '../services/api/ApiStoreSettingsService';
+import { PaymentMethodOption } from '../types/payment';
 
 // Zod Validation Schema
 const checkoutSchema = z.object({
@@ -44,59 +45,16 @@ const checkoutSchema = z.object({
   postalCode: z.string().regex(/^[\da-zA-Z][\da-zA-Z\s-]{1,9}$/, 'Enter a valid postal code'),
   country: z.string().min(2, 'Country is required'),
   deliveryMethod: z.enum(['standard', 'express', 'overnight']),
-  paymentMethod: z.enum(['credit_card', 'apple_pay', 'klarna']),
-  cardNumber: z.string().optional(),
-  cardExpiry: z.string().optional(),
-  cardCvc: z.string().optional(),
-  cardName: z.string().optional(),
+  paymentMethod: z.string().min(1, 'Select a payment method'),
+  paymentMethodName: z.string().optional(),
   notes: z.string().optional(),
 }).superRefine((data, context) => {
   if (data.country === 'Pakistan' && !data.district) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['district'], message: 'District is required' });
   }
-  if (data.paymentMethod !== 'credit_card') return;
-
-  const cardNumber = (data.cardNumber || '').replace(/\D/g, '');
-  if (cardNumber.length < 13 || cardNumber.length > 19 || !passesLuhnCheck(cardNumber)) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardNumber'], message: 'Enter a valid card number' });
-  }
-
-  const expiryMatch = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(data.cardExpiry || '');
-  if (!expiryMatch) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardExpiry'], message: 'Enter expiry as MM/YY' });
-  } else {
-    const month = Number(expiryMatch[1]);
-    const year = 2000 + Number(expiryMatch[2]);
-    const now = new Date();
-    if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardExpiry'], message: 'Card has expired' });
-    }
-  }
-
-  if (!/^\d{3,4}$/.test(data.cardCvc || '')) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardCvc'], message: 'Enter a valid security code' });
-  }
-  if (!(data.cardName || '').trim()) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['cardName'], message: 'Enter the cardholder name' });
-  }
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
-
-const passesLuhnCheck = (cardNumber: string) => {
-  let sum = 0;
-  let doubleDigit = false;
-  for (let index = cardNumber.length - 1; index >= 0; index -= 1) {
-    let digit = Number(cardNumber[index]);
-    if (doubleDigit) {
-      digit *= 2;
-      if (digit > 9) digit -= 9;
-    }
-    sum += digit;
-    doubleDigit = !doubleDigit;
-  }
-  return sum % 10 === 0;
-};
 
 export const CheckoutPage: React.FC = () => {
   const {
@@ -120,6 +78,7 @@ export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const submitLock = useRef(false);
   const [promoInput, setPromoInput] = useState('');
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
@@ -131,6 +90,7 @@ export const CheckoutPage: React.FC = () => {
     register,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm<CheckoutFormValues>({
@@ -148,11 +108,8 @@ export const CheckoutPage: React.FC = () => {
       postalCode: defaultAddress?.postalCode || '',
       country: defaultAddress?.country || 'Pakistan',
       deliveryMethod: shippingOption || 'standard',
-      paymentMethod: 'credit_card',
-      cardNumber: '4242 4242 4242 4242',
-      cardExpiry: '08/28',
-      cardCvc: '888',
-      cardName: user ? `${user.firstName} ${user.lastName}` : 'Elena Rostova',
+      paymentMethod: '',
+      paymentMethodName: '',
       notes: orderNotes || '',
     },
   });
@@ -171,11 +128,29 @@ export const CheckoutPage: React.FC = () => {
     ? getPakistanCities(selectedState, selectedDistrict)
     : addressLocations[selectedCountry]?.[selectedState] || [];
 
+  useEffect(() => {
+    let isCurrent = true;
+    getPaymentMethods().then((methods) => {
+      if (!isCurrent) return;
+      setPaymentMethods(methods);
+      const currentMethod = getValues('paymentMethod');
+      const activeMethod = methods.find((method) => method.id === currentMethod) || methods[0];
+      if (activeMethod) {
+        setValue('paymentMethod', activeMethod.id);
+        setValue('paymentMethodName', activeMethod.label);
+      }
+    }).catch(() => {
+      // Leave payment unavailable until the admin-configured methods can be loaded.
+    });
+    return () => { isCurrent = false; };
+  }, []);
+
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
   const shippingFee = getShippingFee();
   const taxAmount = getTaxAmount();
   const total = getTotal();
+  const storeConfig = getStoreConfig();
 
   const handleDeliveryChange = (method: 'standard' | 'express' | 'overnight') => {
     setValue('deliveryMethod', method);
@@ -575,21 +550,21 @@ export const CheckoutPage: React.FC = () => {
               {[
                 {
                   id: 'standard',
-                  name: 'Standard Carbon-Neutral Ground',
-                  timing: '3-5 business days',
-                  price: subtotal >= 28000 ? 'Free' : 'Rs 3,360',
+                  name: 'Standard Pakistan Courier',
+                  timing: 'Usually 3–5 working days across Pakistan',
+                  price: subtotal >= storeConfig.freeShippingThreshold ? 'Free' : formatPrice(storeConfig.standardShippingFee, storeConfig.currency),
                 },
                 {
                   id: 'express',
-                  name: 'DHL Express Courier',
-                  timing: '1-2 business days',
-                  price: 'Rs 7,000',
+                  name: 'Express Courier',
+                  timing: 'Usually 1–3 working days in serviceable areas',
+                  price: formatPrice(storeConfig.expressShippingFee, storeConfig.currency),
                 },
                 {
                   id: 'overnight',
-                  name: 'Overnight Priority Delivery',
-                  timing: 'Next business day by 12:00 PM',
-                  price: 'Rs 11,200',
+                  name: 'Priority Courier',
+                  timing: 'Usually next working day in major cities; serviceability varies',
+                  price: formatPrice(storeConfig.overnightShippingFee, storeConfig.currency),
                 },
               ].map((opt) => (
                 <label
@@ -629,82 +604,31 @@ export const CheckoutPage: React.FC = () => {
               4. Payment Method
             </h3>
 
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { id: 'credit_card', label: 'Credit Card', icon: CreditCard },
-                { id: 'apple_pay', label: 'Apple Pay', icon: CheckCircle2 },
-                { id: 'klarna', label: 'Klarna 4x', icon: Tag },
-              ].map((method) => (
-                <button
-                  key={method.id}
-                  type="button"
-                  onClick={() => setValue('paymentMethod', method.id as any)}
-                  className={cn(
-                    'p-3.5 border text-center text-xs uppercase tracking-wider font-medium flex flex-col items-center justify-center gap-1.5 transition-all',
-                    selectedPayment === method.id
-                      ? 'border-moss-900 bg-sand-200/70 ring-1 ring-moss-900 font-semibold'
-                      : 'border-sand-300 bg-[#FAF8F5] hover:border-sand-400'
-                  )}
-                >
-                  <method.icon className="w-4 h-4 text-charcoal-700" />
-                  <span>{method.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {selectedPayment === 'credit_card' && (
-              <div className="p-5 bg-sand-100/60 border border-sand-300 space-y-4 animate-fade-in">
-                <div>
-                  <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
-                    Card Number
-                  </label>
-                  <input
-                    type="text"
-                    {...register('cardNumber')}
-                    placeholder="4242 •••• •••• 4242"
-                    className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
-                  />
-                  {errors.cardNumber && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardNumber.message}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
-                      Expiration (MM/YY)
-                    </label>
-                    <input
-                      type="text"
-                      {...register('cardExpiry')}
-                      placeholder="MM/YY"
-                      className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
-                    />
-                    {errors.cardExpiry && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardExpiry.message}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
-                      Security Code (CVC)
-                    </label>
-                    <input
-                      type="text"
-                      {...register('cardCvc')}
-                      placeholder="CVC"
-                      className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
-                    />
-                    {errors.cardCvc && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardCvc.message}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
-                    Cardholder Name
-                  </label>
-                  <input
-                    type="text"
-                    {...register('cardName')}
-                    className="w-full bg-white border border-sand-300 p-3 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
-                  />
-                  {errors.cardName && <p role="alert" className="mt-1 text-[11px] text-red-700">{errors.cardName.message}</p>}
-                </div>
+            {paymentMethods.length === 0 ? (
+              <p role="status" className="border border-sand-300 bg-[#FAF8F5] p-4 text-xs text-charcoal-600">
+                No payment methods are currently available. Please contact the store.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {paymentMethods.map((method) => (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() => {
+                      setValue('paymentMethod', method.id, { shouldValidate: true });
+                      setValue('paymentMethodName', method.label);
+                    }}
+                    className={cn(
+                      'p-3.5 border text-center text-xs uppercase tracking-wider font-medium flex flex-col items-center justify-center gap-1.5 transition-all',
+                      selectedPayment === method.id
+                        ? 'border-moss-900 bg-sand-200/70 ring-1 ring-moss-900 font-semibold'
+                        : 'border-sand-300 bg-[#FAF8F5] hover:border-sand-400'
+                    )}
+                  >
+                    <Wallet className="w-4 h-4 text-charcoal-700" />
+                    <span>{method.label}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -825,6 +749,7 @@ export const CheckoutPage: React.FC = () => {
                 size="lg"
                 className="w-full text-sm font-semibold"
                 isLoading={isSubmitting}
+                disabled={paymentMethods.length === 0}
               >
                 PLACE ORDER · {formatPrice(total)}
               </Button>

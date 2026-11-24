@@ -3,7 +3,7 @@ import { Address } from './customer';
 
 export type OrderStatus = 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Refunded';
 
-export type PaymentMethod = 'Credit Card' | 'Apple Pay' | 'Klarna' | 'Shop Pay';
+export type PaymentMethod = string;
 
 export type PaymentStatus = 'Paid' | 'Pending' | 'Refunded' | 'Failed';
 
@@ -51,7 +51,8 @@ export interface CheckoutFormData {
   postalCode: string;
   country: string;
   deliveryMethod: 'standard' | 'express' | 'overnight';
-  paymentMethod: 'credit_card' | 'apple_pay' | 'klarna';
+  paymentMethod: string;
+  paymentMethodName?: string;
   cardNumber?: string;
   cardExpiry?: string;
   cardCvc?: string;

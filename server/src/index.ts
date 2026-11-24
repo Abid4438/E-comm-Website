@@ -9,6 +9,7 @@ import customersRouter from './routes/customers';
 import ordersRouter from './routes/orders';
 import discountsRouter from './routes/discounts';
 import reviewsRouter from './routes/reviews';
+import settingsRouter from './routes/settings';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api', customersRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/discounts', discountsRouter);
 app.use('/api/reviews', reviewsRouter);
+app.use('/api/settings', settingsRouter);
 
 async function startServer() {
   try {

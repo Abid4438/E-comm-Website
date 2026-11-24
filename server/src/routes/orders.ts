@@ -72,6 +72,19 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { checkoutData, items, totals, customerId } = req.body;
+    const configuredResult = await query<{ value: unknown }>(
+      'SELECT value FROM store_settings WHERE key = $1',
+      ['payment_methods'],
+    );
+    const configuredValue = configuredResult.rows[0]?.value;
+    const configuredMethods = typeof configuredValue === 'string' ? JSON.parse(configuredValue) : configuredValue;
+    const selectedMethod = Array.isArray(configuredMethods)
+      ? configuredMethods.find((method: any) => method.id === checkoutData.paymentMethod)
+      : undefined;
+    if (!selectedMethod) {
+      return res.status(400).json({ error: 'Select a payment method currently offered by the store.' });
+    }
+
     const orderNumber = `${Date.now() % 100000}`.padStart(5, '0');
     const orderId = `MOS-2026-${orderNumber}`;
     const date = new Date().toISOString();
@@ -97,23 +110,25 @@ router.post('/', async (req, res) => {
       phone: checkoutData.phone,
     };
 
-    const paymentMethod =
-      checkoutData.paymentMethod === 'apple_pay'
-        ? 'Apple Pay'
-        : checkoutData.paymentMethod === 'klarna'
-        ? 'Klarna'
-        : 'Credit Card';
+    const paymentMethod = selectedMethod.label;
 
     const deliveryMethod =
       checkoutData.deliveryMethod === 'express'
-        ? 'Express Courier (1-2 business days)'
+        ? 'Express Courier (usually 1-3 working days; serviceability varies)'
         : checkoutData.deliveryMethod === 'overnight'
-        ? 'Overnight Priority'
-        : 'Standard Ground (3-5 business days)';
+        ? 'Priority Courier (usually next working day in major cities; serviceability varies)'
+        : 'Standard Pakistan Courier (usually 3-5 working days)';
 
     const trackingNumber = `MOSS-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-    const carrier = 'DHL Express';
-    const estimatedDelivery = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const carrier = 'Local courier partner';
+    const workingDays = checkoutData.deliveryMethod === 'overnight' ? 1 : checkoutData.deliveryMethod === 'express' ? 3 : 5;
+    const deliveryDate = new Date();
+    let daysAdded = 0;
+    while (daysAdded < workingDays) {
+      deliveryDate.setDate(deliveryDate.getDate() + 1);
+      if (deliveryDate.getDay() !== 0 && deliveryDate.getDay() !== 6) daysAdded += 1;
+    }
+    const estimatedDelivery = deliveryDate.toISOString().split('T')[0];
 
     // Find customer ID if not provided
     let finalCustomerId = customerId;

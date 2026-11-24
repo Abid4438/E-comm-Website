@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { useCartStore } from '../../store/useCartStore';
 import { formatPrice } from '../../utils/formatters';
 import { ShoppingBag, Trash2, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
-import { API_CONFIG } from '../../services/apiClient';
+import { getStoreConfig } from '../../services/apiClient';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -25,7 +25,7 @@ export const CartDrawer: React.FC = () => {
   const subtotal = getSubtotal();
   const amountUntilFree = getAmountUntilFreeShipping();
   const qualifiesForFree = getQualifiesForFreeShipping();
-  const progressPercent = Math.min(100, (subtotal / API_CONFIG.freeShippingThreshold) * 100);
+  const progressPercent = Math.min(100, (subtotal / getStoreConfig().freeShippingThreshold) * 100);
 
   const handleCheckoutClick = () => {
     closeCart();

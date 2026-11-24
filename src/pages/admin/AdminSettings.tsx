@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { useToastStore } from '../../store/useToastStore';
-import { Save, Database, Globe } from 'lucide-react';
+import { Save, Database, Globe, Plus, Trash2, CreditCard } from 'lucide-react';
 import { getStoreConfig } from '../../services/apiClient';
+import { getPaymentMethods, savePaymentMethods } from '../../services/api/ApiStoreSettingsService';
+import { PaymentMethodOption } from '../../types/payment';
 
 const STORE_SETTINGS_KEY = 'moss_store_settings';
 
@@ -10,31 +12,67 @@ export const AdminSettings: React.FC = () => {
   const [storeName, setStoreName] = useState(() => getStoreConfig().storeName || 'MOSS Lifestyle');
   const [supportEmail, setSupportEmail] = useState(() => getStoreConfig().supportEmail || 'concierge@mosslifestyle.com');
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(() => getStoreConfig().freeShippingThreshold);
+  const [standardShippingFee, setStandardShippingFee] = useState(() => getStoreConfig().standardShippingFee);
+  const [expressShippingFee, setExpressShippingFee] = useState(() => getStoreConfig().expressShippingFee);
+  const [overnightShippingFee, setOvernightShippingFee] = useState(() => getStoreConfig().overnightShippingFee);
   const [taxRate, setTaxRate] = useState(() => getStoreConfig().taxRate * 100);
   const [currency, setCurrency] = useState(() => getStoreConfig().currency || 'PKR');
   const [enableCarbonNeutral, setEnableCarbonNeutral] = useState(() => getStoreConfig().enableCarbonNeutral ?? true);
   const [magentoGraphQLEndpoint, setMagentoGraphQLEndpoint] = useState(() => getStoreConfig().magentoGraphQLEndpoint || 'https://demo.magento.com/graphql');
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [newPaymentMethod, setNewPaymentMethod] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [paymentMethodsLoadFailed, setPaymentMethodsLoadFailed] = useState(false);
+  const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
   const { showToast } = useToastStore();
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    getPaymentMethods().then((methods) => {
+      setPaymentMethods(methods);
+      setPaymentMethodsLoaded(true);
+    }).catch(() => {
+      setPaymentMethodsLoadFailed(true);
+      showToast({ title: 'Payment Methods Unavailable', message: 'Could not load the saved payment methods from the server.', type: 'error' });
+    });
+  }, [showToast]);
+
+  const handleAddPaymentMethod = () => {
+    const label = newPaymentMethod.trim();
+    if (!label || paymentMethods.some((method) => method.label.toLowerCase() === label.toLowerCase())) return;
+    setPaymentMethods((methods) => [...methods, { id: `custom_${crypto.randomUUID()}`, label }]);
+    setNewPaymentMethod('');
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (paymentMethodsLoadFailed) {
+      showToast({ title: 'Settings Not Saved', message: 'Reload the saved payment methods before changing them.', type: 'error' });
+      return;
+    }
+    setIsSaving(true);
     try {
+      await savePaymentMethods(paymentMethods);
       localStorage.setItem(STORE_SETTINGS_KEY, JSON.stringify({
         storeName,
         supportEmail,
         freeShippingThreshold,
+        standardShippingFee,
+        expressShippingFee,
+        overnightShippingFee,
         taxRate: taxRate / 100,
         currency,
         enableCarbonNeutral,
         magentoGraphQLEndpoint,
       }));
     } catch {
-      showToast({ title: 'Settings Not Saved', message: 'Browser storage is unavailable. Please try again.', type: 'error' });
+      showToast({ title: 'Settings Not Saved', message: 'Could not save configuration. Check administrator access and try again.', type: 'error' });
+      setIsSaving(false);
       return;
     }
+    setIsSaving(false);
     showToast({
       title: 'Settings Saved',
-      message: 'Store configuration parameters updated.',
+      message: 'Store settings and payment methods updated.',
       type: 'success',
     });
   };
@@ -110,6 +148,45 @@ export const AdminSettings: React.FC = () => {
 
             <div>
               <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                Standard Pakistan Courier ({currency === 'PKR' ? 'Rs' : currency})
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={standardShippingFee}
+                onChange={(e) => setStandardShippingFee(Number(e.target.value))}
+                className="w-full bg-white border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                Express Courier ({currency === 'PKR' ? 'Rs' : currency})
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={expressShippingFee}
+                onChange={(e) => setExpressShippingFee(Number(e.target.value))}
+                className="w-full bg-white border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
+                Priority Courier ({currency === 'PKR' ? 'Rs' : currency})
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={overnightShippingFee}
+                onChange={(e) => setOvernightShippingFee(Number(e.target.value))}
+                className="w-full bg-white border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-medium text-charcoal-700 mb-1">
                 Primary Currency
               </label>
               <select
@@ -137,6 +214,57 @@ export const AdminSettings: React.FC = () => {
             <label htmlFor="carbon-toggle" className="text-xs text-charcoal-700 font-medium">
               Enable Carbon-Neutral Certification Badge and Packaging Guarantee
             </label>
+          </div>
+        </div>
+
+        {/* Checkout Payment Methods */}
+        <div className="p-6 sm:p-8 bg-[#FAF8F5] border border-sand-300 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 font-serif text-xl font-normal text-charcoal-900 pb-2 border-b border-sand-200">
+            <CreditCard className="w-5 h-5 text-moss-800" />
+            <span>Checkout Payment Methods</span>
+          </div>
+          <p className="text-xs text-charcoal-600">Only the methods listed here appear at checkout. Add or remove methods, then save the configuration.</p>
+          {paymentMethodsLoadFailed && <p role="alert" className="text-xs text-red-700">Payment methods could not be loaded. Refresh this page before editing.</p>}
+          <div className="space-y-2">
+            {paymentMethods.length === 0 && !paymentMethodsLoadFailed && (
+              <p className="text-xs text-charcoal-500">No payment methods added. Customers will see no payment options until you add one.</p>
+            )}
+            {paymentMethods.map((method) => (
+              <div key={method.id} className="flex items-center justify-between gap-3 bg-white border border-sand-200 px-3 py-2.5">
+                <span className="text-sm text-charcoal-900">{method.label}</span>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethods((methods) => methods.filter((item) => item.id !== method.id))}
+                  disabled={paymentMethodsLoadFailed}
+                  aria-label={`Remove ${method.label}`}
+                  title={`Remove ${method.label}`}
+                  className="text-red-700 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newPaymentMethod}
+              onChange={(e) => setNewPaymentMethod(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddPaymentMethod(); } }}
+              maxLength={50}
+              placeholder="New method name"
+              aria-label="New payment method name"
+              className="flex-1 bg-white border border-sand-300 p-2.5 text-xs text-charcoal-900 focus:outline-none focus:border-moss-900"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddPaymentMethod}
+              disabled={!newPaymentMethod.trim() || paymentMethods.length >= 20 || paymentMethods.some((method) => method.label.toLowerCase() === newPaymentMethod.trim().toLowerCase())}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              Add Method
+            </Button>
           </div>
         </div>
 
@@ -182,8 +310,9 @@ export const AdminSettings: React.FC = () => {
             variant="dark"
             size="lg"
             leftIcon={<Save className="w-4 h-4" />}
+            disabled={isSaving || !paymentMethodsLoaded}
           >
-            Save Configuration
+            {isSaving ? 'Saving…' : 'Save Configuration'}
           </Button>
         </div>
       </form>
